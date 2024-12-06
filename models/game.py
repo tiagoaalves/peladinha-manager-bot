@@ -1,0 +1,9 @@
+class SoccerGame:
+    def __init__(self):
+        self.players = []
+        self.max_players = 3
+        self.captains = []
+        self.teams = {"Team A": [], "Team B": []}
+        self.current_selector = None
+        self.game_state = "WAITING"
+        self.mvp_votes = {}
