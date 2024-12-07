@@ -54,36 +54,64 @@ class PlayerHandlers:
         chat_id = query.message.chat_id
         game = self.game_manager.get_game(chat_id)
         
+        if not game or game.game_state != "SELECTION":
+            await query.answer("No active team selection!")
+            return
+            
         selected_id = int(query.data.split('_')[1])
         selected_player = next(p for p in game.players if p.id == selected_id)
         
+        # Determine current team and add player
         team_name = "Team A" if game.current_selector == game.captains[0] else "Team B"
         game.teams[team_name].append(selected_player)
         
+        # Switch to other captain for next selection
         game.current_selector = game.captains[1] if game.current_selector == game.captains[0] else game.captains[0]
         
-        if all(len(team) == (game.max_players - 2) // 2 for team in game.teams.values()):
+        # Calculate players per team excluding captains
+        players_per_team = (game.max_players - 2) // 2
+        
+        # Check if teams are complete
+        if len(game.teams["Team A"]) == players_per_team and len(game.teams["Team B"]) == players_per_team:
             game.game_state = "IN_GAME"
-            await query.message.reply_text(
-                "Teams are complete!\n"
-                f"Team A: {', '.join(p.first_name for p in game.teams['Team A'])}\n"
-                f"Team B: {', '.join(p.first_name for p in game.teams['Team B'])}\n\n"
+            # Show final teams including captains
+            team_a_players = [game.captains[0]] + game.teams["Team A"]
+            team_b_players = [game.captains[1]] + game.teams["Team B"]
+            
+            await query.message.edit_text(
+                "Teams are complete!\n\n"
+                f"Team A (Captain: {game.captains[0].first_name}):\n"
+                f"{', '.join(p.first_name for p in team_a_players)}\n\n"
+                f"Team B (Captain: {game.captains[1].first_name}):\n"
+                f"{', '.join(p.first_name for p in team_b_players)}\n\n"
                 "Good luck! Use /end_game when finished."
             )
         else:
+            # Get remaining players (excluding captains and already selected players)
             remaining_players = [p for p in game.players 
-                              if p not in game.captains 
-                              and p not in game.teams["Team A"]
-                              and p not in game.teams["Team B"]]
+                            if p not in game.captains 
+                            and p not in game.teams["Team A"] 
+                            and p not in game.teams["Team B"]]
             
             keyboard = [[InlineKeyboardButton(p.first_name, callback_data=f"select_{p.id}")] 
-                       for p in remaining_players]
+                    for p in remaining_players]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
+            # Show current teams status and selection prompt
+            team_a_text = f"Team A (Captain: {game.captains[0].first_name}): "
+            team_a_text += ', '.join(p.first_name for p in game.teams["Team A"]) if game.teams["Team A"] else "No players"
+            
+            team_b_text = f"Team B (Captain: {game.captains[1].first_name}): "
+            team_b_text += ', '.join(p.first_name for p in game.teams["Team B"]) if game.teams["Team B"] else "No players"
+            
             await query.message.edit_text(
-                f"{game.current_selector.first_name}, select your player:",
+                f"{team_a_text}\n"
+                f"{team_b_text}\n\n"
+                f"{game.current_selector.first_name}'s turn to select:",
                 reply_markup=reply_markup
             )
+        
+        await query.answer()
 
     async def handle_vote(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
