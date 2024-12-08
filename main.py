@@ -25,6 +25,7 @@ async def main():
     app.add_handler(CommandHandler("end_game", game_handlers.end_game))
     app.add_handler(CommandHandler("score", game_handlers.handle_score))
     app.add_handler(CommandHandler("list", game_handlers.list_players))
+    app.add_handler(CommandHandler("test_fill", game_handlers.test_fill))
     
     app.add_handler(CallbackQueryHandler(player_handlers.handle_join, pattern="^join"))
     app.add_handler(CallbackQueryHandler(player_handlers.handle_leave, pattern="^leave"))

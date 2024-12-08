@@ -78,13 +78,22 @@ class PlayerHandlers:
             team_a_players = [game.captains[0]] + game.teams["Team A"]
             team_b_players = [game.captains[1]] + game.teams["Team B"]
             
-            await query.message.edit_text(
-                "Teams are complete!\n\n"
-                f"Team A (Captain: {game.captains[0].first_name}):\n"
-                f"{', '.join(p.first_name for p in team_a_players)}\n\n"
-                f"Team B (Captain: {game.captains[1].first_name}):\n"
-                f"{', '.join(p.first_name for p in team_b_players)}\n\n"
-                "Good luck! Use /end_game when finished."
+            # First delete the selection message
+            await query.message.delete()
+            
+            # Format teams with one player per line
+            team_a_list = "\n".join(p.first_name for p in team_a_players)
+            team_b_list = "\n".join(p.first_name for p in team_b_players)
+            
+            # Then send a new message with the final teams
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Teams are complete!\n\n"
+                    f"Team A (Captain: {game.captains[0].first_name}):\n"
+                    f"{team_a_list}\n\n"
+                    f"Team B (Captain: {game.captains[1].first_name}):\n"
+                    f"{team_b_list}\n\n"
+                    "Good luck! Use /end_game when finished."
             )
         else:
             # Get remaining players (excluding captains and already selected players)
@@ -97,15 +106,21 @@ class PlayerHandlers:
                     for p in remaining_players]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            # Show current teams status and selection prompt
-            team_a_text = f"Team A (Captain: {game.captains[0].first_name}): "
-            team_a_text += ', '.join(p.first_name for p in game.teams["Team A"]) if game.teams["Team A"] else "No players"
+            # Format current teams status with one player per line
+            team_a_text = f"Team A (Captain: {game.captains[0].first_name}):"
+            if game.teams["Team A"]:
+                team_a_text += "\n" + "\n".join(p.first_name for p in game.teams["Team A"])
+            else:
+                team_a_text += "\nNo players"
             
-            team_b_text = f"Team B (Captain: {game.captains[1].first_name}): "
-            team_b_text += ', '.join(p.first_name for p in game.teams["Team B"]) if game.teams["Team B"] else "No players"
+            team_b_text = f"Team B (Captain: {game.captains[1].first_name}):"
+            if game.teams["Team B"]:
+                team_b_text += "\n" + "\n".join(p.first_name for p in game.teams["Team B"])
+            else:
+                team_b_text += "\nNo players"
             
             await query.message.edit_text(
-                f"{team_a_text}\n"
+                f"{team_a_text}\n\n"
                 f"{team_b_text}\n\n"
                 f"{game.current_selector.first_name}'s turn to select:",
                 reply_markup=reply_markup
@@ -115,17 +130,28 @@ class PlayerHandlers:
 
     async def handle_vote(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
-        chat_id = query.message.chat_id
-        game = self.game_manager.get_game(chat_id)
-        
         voter = query.from_user
         voted_id = int(query.data.split('_')[1])
+        
+        # Find the game where this player is participating
+        game = None
+        game_chat_id = None
+        for chat_id, g in self.game_manager.games.items():
+            if g.game_state == "VOTING" and voter.id in [p.id for p in g.players]:
+                game = g
+                game_chat_id = chat_id
+                break
+        
+        if not game:
+            await query.answer("No active voting session found!")
+            return
         
         if voter.id in game.mvp_votes:
             await query.answer("You already voted!")
             return
             
         game.mvp_votes[voter.id] = voted_id
+        voted_player = next(p for p in game.players if p.id == voted_id)
         
         if len(game.mvp_votes) == len(game.players):
             vote_count = {}
@@ -135,12 +161,26 @@ class PlayerHandlers:
             mvp_id = max(vote_count.keys(), key=lambda k: vote_count[k])
             mvp = next(p for p in game.players if p.id == mvp_id)
             
-            await query.message.edit_text(
-                f"MVP of the game: {mvp.first_name} "
-                f"with {vote_count[mvp_id]} votes! 🏆"
+            # Send results to the group chat
+            await context.bot.send_message(
+                chat_id=game_chat_id,
+                text=f"MVP of the game: {mvp.first_name} "
+                    f"with {vote_count[mvp_id]} votes! 🏆"
             )
-            self.game_manager.remove_game(chat_id)
+            
+            # Update the private message to show vote is complete
+            await query.message.edit_text(
+                f"{query.message.text}\n\n"
+                "✅ Voting complete! Results have been announced in the group."
+            )
+            
+            self.game_manager.remove_game(game_chat_id)
         else:
+            # Update the private message to show their vote was recorded
+            await query.message.edit_text(
+                f"{query.message.text}\n\n"
+                f"✅ You voted for: {voted_player.first_name}"
+            )
             await query.answer("Vote recorded!")
 
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
