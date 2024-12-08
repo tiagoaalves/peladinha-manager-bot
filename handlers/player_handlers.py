@@ -153,6 +153,9 @@ class PlayerHandlers:
         game.mvp_votes[voter.id] = voted_id
         voted_player = next(p for p in game.players if p.id == voted_id)
         
+        # Delete the original message with the keyboard
+        await query.message.delete()
+        
         if len(game.mvp_votes) == len(game.players):
             vote_count = {}
             for voted_id in game.mvp_votes.values():
@@ -168,18 +171,26 @@ class PlayerHandlers:
                     f"with {vote_count[mvp_id]} votes! 🏆"
             )
             
-            # Update the private message to show vote is complete
-            await query.message.edit_text(
-                f"{query.message.text}\n\n"
-                "✅ Voting complete! Results have been announced in the group."
+            # Send new message in private chat
+            await context.bot.send_message(
+                chat_id=voter.id,
+                text=f"🏆 MVP Vote for game in Teste do bot 🏆\n\n"
+                    f"Final Score:\n"
+                    f"Team A: {game.score['Team A']}\n"
+                    f"Team B: {game.score['Team B']}\n\n"
+                    f"✅ Voting complete! Results have been announced in the group."
             )
             
             self.game_manager.remove_game(game_chat_id)
         else:
-            # Update the private message to show their vote was recorded
-            await query.message.edit_text(
-                f"{query.message.text}\n\n"
-                f"✅ You voted for: {voted_player.first_name}"
+            # Send new message in private chat
+            await context.bot.send_message(
+                chat_id=voter.id,
+                text=f"🏆 MVP Vote for game in Teste do bot 🏆\n\n"
+                    f"Final Score:\n"
+                    f"Team A: {game.score['Team A']}\n"
+                    f"Team B: {game.score['Team B']}\n\n"
+                    f"✅ You voted for: {voted_player.first_name}"
             )
             await query.answer("Vote recorded!")
 

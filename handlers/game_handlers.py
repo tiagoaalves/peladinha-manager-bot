@@ -111,8 +111,7 @@ class GameHandlers:
         
         # Inform group that voting is starting
         await update.message.reply_text(
-            "Starting MVP voting! Check your private messages to cast your vote.\n"
-            "If you haven't received a message, please start a private chat with me first."
+            "Starting MVP voting! Check your private messages to cast your vote."
         )
         
         # Send private messages
