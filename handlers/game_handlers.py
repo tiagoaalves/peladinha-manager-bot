@@ -183,3 +183,109 @@ class GameHandlers:
 
         game.players = dummy_players
         await self.game_manager.update_join_message(chat_id, context)
+
+    async def add_external(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+        game = self.game_manager.get_game(chat_id)
+        
+        if not game:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="No active game!"
+            )
+            return
+            
+        if game.game_state != "WAITING":
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Can't add players after game has started!"
+            )
+            return
+            
+        if not context.args:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Please provide the player name.\nUsage: /add_external PlayerName"
+            )
+            return
+        
+        player_name = " ".join(context.args)
+        
+        if len(game.players) >= game.max_players:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Game is full!"
+            )
+            return
+            
+        # Create unique negative ID for external player
+        external_id = -1 * (len([p for p in game.players if p.id < 0]) + 1)
+        external_player = ExternalPlayer(external_id, player_name)
+        
+        # Check if player with same name already exists
+        if any(p.first_name == player_name for p in game.players):
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"Player named '{player_name}' already exists!"
+            )
+            return
+        
+        game.players.append(external_player)
+        await self.game_manager.update_join_message(chat_id, context)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"Added external player: {player_name}"
+        )
+
+    async def remove_external(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+        game = self.game_manager.get_game(chat_id)
+        
+        if not game:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="No active game!"
+            )
+            return
+            
+        if game.game_state != "WAITING":
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Can't remove players after game has started!"
+            )
+            return
+            
+        if not context.args:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Please provide the player name.\nUsage: /remove_external PlayerName"
+            )
+            return
+        
+        player_name = " ".join(context.args)
+        
+        # Find and remove external player
+        external_player = None
+        for player in game.players:
+            if player.first_name == player_name and player.id < 0:
+                external_player = player
+                break
+        
+        if external_player:
+            game.players.remove(external_player)
+            await self.game_manager.update_join_message(chat_id, context)
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"Removed external player: {player_name}"
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"No external player found with name: {player_name}"
+            )
+
+class ExternalPlayer:
+    def __init__(self, id: int, first_name: str):
+        self.id = id  # We'll use negative IDs for external players to avoid conflicts
+        self.first_name = first_name
+        self.last_name = None
