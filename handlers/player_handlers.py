@@ -222,14 +222,23 @@ class PlayerHandlers:
             for voted_id in game.mvp_votes.values():
                 vote_count[voted_id] = vote_count.get(voted_id, 0) + 1
             
-            mvp_id = max(vote_count.keys(), key=lambda k: vote_count[k])
-            mvp = next(p for p in game.players if p.id == mvp_id)
+            # Find highest vote count and all players with that count
+            max_votes = max(vote_count.values())
+            mvp_ids = [pid for pid, votes in vote_count.items() if votes == max_votes]
+            
+            # Get MVP player objects and format announcement
+            mvps = [next(p for p in game.players if p.id == mvp_id) for mvp_id in mvp_ids]
+            
+            if len(mvps) == 1:
+                result_text = f"🏆 MVP of the game: {mvps[0].first_name} with {max_votes} votes!"
+            else:
+                names = ", ".join(p.first_name for p in mvps)
+                result_text = f"🏆 It's a tie! MVPs of the game: {names}\nEach with {max_votes} votes!"
             
             # Send results to the group chat
             await context.bot.send_message(
                 chat_id=game_chat_id,
-                text=f"MVP of the game: {mvp.first_name} "
-                    f"with {vote_count[mvp_id]} votes! 🏆"
+                text=result_text
             )
             
             # Send new message in private chat
