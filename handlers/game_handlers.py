@@ -8,6 +8,16 @@ class GameHandlers:
 
     async def start_game(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
+        
+        # Check if there's an active game
+        if chat_id in self.game_manager.games:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="A game is already active. End it first to start a new one."
+            )
+            return
+        
+        # If no active game exists, create a new one
         self.game_manager.create_game(chat_id)
         await self.game_manager.update_join_message(chat_id, context)
 
