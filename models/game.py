@@ -7,3 +7,5 @@ class SoccerGame:
         self.current_selector = None
         self.game_state = "WAITING"
         self.mvp_votes = {}
+        self.draft_method = None
+        self.selection_round = 0

@@ -168,6 +168,7 @@ class GameHandlers:
             DummyUser(6, "Test6"),
             DummyUser(7, "Test7"),
             DummyUser(8, "Test8"),
+            DummyUser(9, "Test9"),
         ]
 
         game.players = dummy_players

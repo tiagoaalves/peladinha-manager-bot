@@ -31,6 +31,7 @@ async def main():
     app.add_handler(CallbackQueryHandler(player_handlers.handle_leave, pattern="^leave"))
     app.add_handler(CallbackQueryHandler(player_handlers.handle_selection, pattern="^select_"))
     app.add_handler(CallbackQueryHandler(player_handlers.handle_vote, pattern="^vote_"))
+    app.add_handler(CallbackQueryHandler(player_handlers.handle_draft_choice, pattern=r"^draft_"))
     
     print("Soccer Bot started! Press Ctrl+C to exit.")
     
