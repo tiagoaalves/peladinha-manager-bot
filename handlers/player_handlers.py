@@ -128,6 +128,66 @@ class PlayerHandlers:
         
         await query.answer()
 
+    async def start_mvp_voting(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+        game = self.game_manager.get_game(chat_id)
+        
+        if not game:
+            await update.message.reply_text("No active game!")
+            return
+        
+        # Initialize voting state
+        game.game_state = "VOTING"
+        game.mvp_votes = {}
+        game.voting_players = []
+        
+        # Create voting keyboard
+        keyboard = []
+        for player in game.players:
+            player_name = (f"{player.first_name} {player.last_name}" 
+                        if player.last_name 
+                        else player.first_name)
+            button = InlineKeyboardButton(
+                player_name,
+                callback_data=f"vote_{player.id}"
+            )
+            keyboard.append([button])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Inform group that voting is starting
+        await update.message.reply_text(
+            "Starting MVP voting! Check your private messages to cast your vote.\n"
+            "If you haven't received a message, please start a private chat with me first."
+        )
+        
+        # Send private messages and track successful sends
+        failed_players = []
+        for player in game.players:
+            try:
+                await context.bot.send_message(
+                    chat_id=player.id,
+                    text=(
+                        f"🏆 MVP Vote for game in {update.effective_chat.title} 🏆\n\n"
+                        f"Final Score:\n"
+                        f"Team A: {game.score['Team A']}\n"
+                        f"Team B: {game.score['Team B']}\n\n"
+                        "Choose the most valuable player:"
+                    ),
+                    reply_markup=reply_markup
+                )
+                game.voting_players.append(player)  # Add to voting players list
+            except (BadRequest, TelegramError) as e:
+                failed_players.append(player.first_name)
+                continue
+        
+        # If any players couldn't receive messages, inform the group
+        if failed_players:
+            await update.message.reply_text(
+                f"⚠️ Couldn't send voting message to: {', '.join(failed_players)}\n"
+                "These players won't participate in the MVP voting."
+            )
+
     async def handle_vote(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         voter = query.from_user
@@ -137,7 +197,7 @@ class PlayerHandlers:
         game = None
         game_chat_id = None
         for chat_id, g in self.game_manager.games.items():
-            if g.game_state == "VOTING" and voter.id in [p.id for p in g.players]:
+            if g.game_state == "VOTING" and voter.id in [p.id for p in g.voting_players]:
                 game = g
                 game_chat_id = chat_id
                 break
@@ -156,7 +216,8 @@ class PlayerHandlers:
         # Delete the original message with the keyboard
         await query.message.delete()
         
-        if len(game.mvp_votes) == len(game.players):
+        # Check if all players who received the message have voted
+        if len(game.mvp_votes) == len(game.voting_players):
             vote_count = {}
             for voted_id in game.mvp_votes.values():
                 vote_count[voted_id] = vote_count.get(voted_id, 0) + 1
@@ -174,7 +235,7 @@ class PlayerHandlers:
             # Send new message in private chat
             await context.bot.send_message(
                 chat_id=voter.id,
-                text=f"🏆 MVP Vote for game in Teste do bot 🏆\n\n"
+                text=f"🏆 MVP Vote for game in {query.message.chat.title} 🏆\n\n"
                     f"Final Score:\n"
                     f"Team A: {game.score['Team A']}\n"
                     f"Team B: {game.score['Team B']}\n\n"
@@ -186,7 +247,7 @@ class PlayerHandlers:
             # Send new message in private chat
             await context.bot.send_message(
                 chat_id=voter.id,
-                text=f"🏆 MVP Vote for game in Teste do bot 🏆\n\n"
+                text=f"🏆 MVP Vote for game in {query.message.chat.title} 🏆\n\n"
                     f"Final Score:\n"
                     f"Team A: {game.score['Team A']}\n"
                     f"Team B: {game.score['Team B']}\n\n"

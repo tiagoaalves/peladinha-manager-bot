@@ -94,6 +94,7 @@ class GameHandlers:
         # Initialize voting state
         game.game_state = "VOTING"
         game.mvp_votes = {}
+        game.voting_players = []  # Track players who can vote
         
         # Create voting keyboard
         keyboard = []
@@ -111,10 +112,11 @@ class GameHandlers:
         
         # Inform group that voting is starting
         await update.message.reply_text(
-            "Starting MVP voting! Check your private messages to cast your vote."
+            "Starting MVP voting! Check your private messages to cast your vote.\n"
+            "If you haven't received a message, please start a private chat with me first."
         )
         
-        # Send private messages
+        # Send private messages and track successful sends
         failed_players = []
         for player in game.players:
             try:
@@ -129,8 +131,8 @@ class GameHandlers:
                     ),
                     reply_markup=reply_markup
                 )
+                game.voting_players.append(player)  # Add to voting players list
             except (BadRequest, TelegramError) as e:
-                # Catch all possible Telegram API errors
                 failed_players.append(player.first_name)
                 continue
         
@@ -138,7 +140,7 @@ class GameHandlers:
         if failed_players:
             await update.message.reply_text(
                 f"⚠️ Couldn't send voting message to: {', '.join(failed_players)}\n"
-                "These players need to start a private chat with me first using /start"
+                "These players won't participate in the MVP voting."
             )
 
     async def test_fill(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -166,7 +168,6 @@ class GameHandlers:
             DummyUser(6, "Test6"),
             DummyUser(7, "Test7"),
             DummyUser(8, "Test8"),
-            DummyUser(9, "Test9"),
         ]
 
         game.players = dummy_players
