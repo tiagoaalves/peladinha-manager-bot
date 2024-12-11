@@ -58,14 +58,20 @@ class GameHandlers:
             return
 
         try:
-            # Save all non-external players to database
-            print("\nSaving players to database...")
+            # Handle player records
+            print("\nProcessing players...")
             telegram_players = [p for p in game.players if p.id > 0]
             print(f"Found {len(telegram_players)} non-external players")
             
             for player in telegram_players:
-                print(f"Saving player: {player.first_name} (ID: {player.id})")
-                self.db_manager.create_player(player)
+                print(f"Processing player: {player.first_name} (ID: {player.id})")
+                # Only create new players, don't update existing ones
+                existing = self.db_manager.get_player_stats(player.id)
+                if not existing:
+                    print(f"New player, creating record: {player.first_name}")
+                    self.db_manager.create_player(player)
+                else:
+                    print(f"Existing player found: {player.first_name}")
             
             # Prepare player data
             print("\nPreparing player data for game record...")
@@ -102,7 +108,6 @@ class GameHandlers:
             "Please enter the final score using the format: /score TeamA TeamB\n"
             "Example: /score 3 2"
         )
-        print("\n=== End game process completed ===")
 
     async def handle_score(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id

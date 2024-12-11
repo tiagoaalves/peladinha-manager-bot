@@ -244,12 +244,30 @@ class PlayerHandlers:
         """Handle the completion of MVP voting"""
         mvps, max_votes = self._count_votes(game)
         
-        # Update database
         try:
-            mvp_ids = [mvp.id for mvp in mvps if mvp.id > 0]  # Filter out external players
-            self.db_manager.update_mvp(game.db_game_id, mvp_ids)
+            # Prepare final player data with MVP information
+            players_data = []
+            for player in game.players:
+                if player.id < 0:  # Skip external players
+                    continue
+                    
+                player_data = {
+                    'id': player.id,
+                    'team': 'A' if player in game.teams["Team A"] else 'B',
+                    'was_captain': player in game.captains,
+                    'was_mvp': player in mvps
+                }
+                players_data.append(player_data)
+            
+            # Update all player stats now that we have complete information
+            self.db_manager.update_player_stats(
+                score_team_a=game.score["Team A"],
+                score_team_b=game.score["Team B"],
+                players_data=players_data
+            )
+            
         except Exception as e:
-            print(f"Database error during MVP update: {e}")
+            print(f"Error updating player stats: {e}")
         
         # Announce results
         result_text = self._format_mvp_announcement(mvps, max_votes)

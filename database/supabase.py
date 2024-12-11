@@ -80,10 +80,13 @@ class SupabaseManager:
             print(f"Error saving game: {e}")
             return None
         
-    def _update_player_stats(self, score_team_a, score_team_b, players_data):
+    def update_player_stats(self, score_team_a, score_team_b, players_data):
         """Update statistics for all players in a game"""
         for player_data in players_data:
             player = self.get_player_stats(player_data['id'])
+            
+            if not player:
+                continue
             
             is_team_a = player_data['team'] == 'A'
             player_score = score_team_a if is_team_a else score_team_b
@@ -93,11 +96,12 @@ class SupabaseManager:
             won = player_score > opponent_score
             tied = player_score == opponent_score
             
-            # Update stats
-            new_stats = {
-                'games_played': player['games_played'] + 1,
-                'last_played': datetime.utcnow().isoformat()
-            }
+            # Start with all existing stats
+            new_stats = dict(player)
+            
+            # Update the stats we want to change
+            new_stats['games_played'] = player['games_played'] + 1
+            new_stats['last_played'] = datetime.utcnow().isoformat()
             
             if tied:
                 new_stats['games_drawn'] = player['games_drawn'] + 1
@@ -118,13 +122,34 @@ class SupabaseManager:
             new_stats['best_streak'] = max(player['best_streak'], new_stats['current_streak'])
             new_stats['worst_streak'] = min(player['worst_streak'], new_stats['current_streak'])
             
-            # Update player record
-            self.supabase.table('players').update(new_stats).eq('id', player_data['id']).execute()
+            # Remove fields that shouldn't be updated
+            new_stats.pop('id', None)
+            new_stats.pop('created_at', None)
+            
+            try:
+                self.supabase.table('players')\
+                    .update(new_stats)\
+                    .eq('id', player_data['id'])\
+                    .execute()
+            except Exception as e:
+                print(f"Error updating stats for player {player_data['id']}: {e}")
 
     def get_player_stats(self, player_id):
         """Get player statistics"""
-        result = self.supabase.table('players').select('*').eq('id', player_id).execute()
-        return result.data[0] if result.data else None
+        try:
+            result = self.supabase.table('players')\
+                .select('*')\
+                .eq('id', player_id)\
+                .execute()
+                
+            if not result.data:
+                return None
+                
+            return result.data[0]
+                
+        except Exception as e:
+            print(f"Error getting player stats: {e}")
+            return None
 
     def get_leaderboard(self, min_games=5):
         """Get top players by ELO rating"""
