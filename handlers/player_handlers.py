@@ -266,7 +266,21 @@ class PlayerHandlers:
 
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         game = self.game_manager.get_game(chat_id)
-        game.captains = random.sample(game.players, 2)
+        
+        # Filter out external players (who have negative IDs)
+        telegram_players = [p for p in game.players if p.id > 0]
+        
+        # Check if we have enough Telegram players to be captains
+        if len(telegram_players) < 2:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Not enough Telegram users to select captains. Need at least 2 non-external players."
+            )
+            # Reset game state
+            self.game_manager.remove_game(chat_id)
+            return
+            
+        game.captains = random.sample(telegram_players, 2)
         game.game_state = "DRAFT_CHOICE"
         
         # Create method selection keyboard

@@ -232,10 +232,6 @@ class GameHandlers:
         
         game.players.append(external_player)
         await self.game_manager.update_join_message(chat_id, context)
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=f"Added external player: {player_name}"
-        )
 
     async def remove_external(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
@@ -271,14 +267,7 @@ class GameHandlers:
                 external_player = player
                 break
         
-        if external_player:
-            game.players.remove(external_player)
-            await self.game_manager.update_join_message(chat_id, context)
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"Removed external player: {player_name}"
-            )
-        else:
+        if not external_player:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=f"No external player found with name: {player_name}"
