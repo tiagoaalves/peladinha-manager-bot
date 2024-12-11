@@ -209,3 +209,19 @@ class SupabaseManager:
         except Exception as e:
             print(f"Error updating MVP status: {e}")
             return False
+
+    def update_game_score(self, game_id, score_a, score_b):
+        """Update the score for a game"""
+        try:
+            self.supabase.table('games')\
+                .update({
+                    'score_team_a': score_a,
+                    'score_team_b': score_b
+                })\
+                .eq('id', game_id)\
+                .execute()
+            
+            return True
+        except Exception as e:
+            print(f"Error updating game score: {e}")
+            return False

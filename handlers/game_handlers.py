@@ -132,13 +132,24 @@ class GameHandlers:
             )
             return
 
+        # Update game object
         game.score = {"Team A": score_a, "Team B": score_b}
         
-        # Announce the final score before MVP voting
+        # Update game record in database
+        try:
+            if hasattr(game, 'db_game_id'):
+                self.db_manager.update_game_score(game.db_game_id, score_a, score_b)
+            else:
+                print("Warning: No db_game_id found for game")
+                
+        except Exception as e:
+            print(f"Error updating game score: {e}")
+        
+        # Announce the final score
         await update.message.reply_text(
             f"Final Score:\n"
             f"Team A: {score_a}\n"
-            f"Team B: {score_b}\n"
+            f"Team B: {score_b}"
         )
         
         # Start MVP voting
