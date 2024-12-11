@@ -1,4 +1,4 @@
-# peladinha-manager-bot 🤖⚽
+# Peladinha Manager Bot 🤖⚽
 
 Hey there! This is a Telegram bot I made to help organize our weekly football games with friends. It started because we were tired of the chaotic WhatsApp messages trying to sort out teams, so I built something to make our lives easier.
 
@@ -68,4 +68,4 @@ MIT - do whatever you want with it! If it helps organize your games, that's a wi
 
 ## Questions?
 
-Just open an issue or reach out. Always happy to help fellow football enthusiasts! ⚽A Telegram bot to manage my football pickup games
+Just open an issue or reach out!
