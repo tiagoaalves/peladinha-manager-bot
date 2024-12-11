@@ -190,19 +190,13 @@ class PlayerHandlers:
             )
 
     async def handle_vote(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle incoming MVP votes"""
         query = update.callback_query
         voter = query.from_user
         voted_id = int(query.data.split('_')[1])
         
-        # Find the game where this player is participating
-        game = None
-        game_chat_id = None
-        for chat_id, g in self.game_manager.games.items():
-            if g.game_state == "VOTING" and voter.id in [p.id for p in g.voting_players]:
-                game = g
-                game_chat_id = chat_id
-                break
-        
+        # Find active game and validate vote
+        game, game_chat_id = self._find_active_voting_game(voter.id)
         if not game:
             await query.answer("No active voting session found!")
             return
@@ -210,60 +204,85 @@ class PlayerHandlers:
         if voter.id in game.mvp_votes:
             await query.answer("You already voted!")
             return
-            
-        game.mvp_votes[voter.id] = voted_id
-        voted_player = next(p for p in game.players if p.id == voted_id)
         
-        # Delete the original message with the keyboard
+        # Record vote and notify voter
+        voted_player = self._record_vote(game, voter.id, voted_id)
         await query.message.delete()
         
-        # Check if all players who received the message have voted
+        # Check if voting is complete
         if len(game.mvp_votes) == len(game.voting_players):
-            vote_count = {}
-            for voted_id in game.mvp_votes.values():
-                vote_count[voted_id] = vote_count.get(voted_id, 0) + 1
-            
-            # Find highest vote count and all players with that count
-            max_votes = max(vote_count.values())
-            mvp_ids = [pid for pid, votes in vote_count.items() if votes == max_votes]
-            
-            # Get MVP player objects and format announcement
-            mvps = [next(p for p in game.players if p.id == mvp_id) for mvp_id in mvp_ids]
-            
-            if len(mvps) == 1:
-                result_text = f"🏆 MVP of the game: {mvps[0].first_name} with {max_votes} votes!"
-            else:
-                names = ", ".join(p.first_name for p in mvps)
-                result_text = f"🏆 It's a tie! MVPs of the game: {names}\nEach with {max_votes} votes!"
-            
-            # Send results to the group chat
-            await context.bot.send_message(
-                chat_id=game_chat_id,
-                text=result_text
-            )
-            
-            # Send new message in private chat
-            await context.bot.send_message(
-                chat_id=voter.id,
-                text=f"🏆 MVP Vote for game in {query.message.chat.title} 🏆\n\n"
-                    f"Final Score:\n"
-                    f"Team A: {game.score['Team A']}\n"
-                    f"Team B: {game.score['Team B']}\n\n"
-                    f"✅ Voting complete! Results have been announced in the group."
-            )
-            
-            self.game_manager.remove_game(game_chat_id)
+            await self._handle_voting_completion(game, game_chat_id, context)
         else:
-            # Send new message in private chat
-            await context.bot.send_message(
-                chat_id=voter.id,
-                text=f"🏆 MVP Vote for game in {query.message.chat.title} 🏆\n\n"
-                    f"Final Score:\n"
-                    f"Team A: {game.score['Team A']}\n"
-                    f"Team B: {game.score['Team B']}\n\n"
-                    f"✅ You voted for: {voted_player.first_name}"
-            )
+            await self._send_vote_confirmation(context, voter.id, voted_player)
             await query.answer("Vote recorded!")
+
+    def _find_active_voting_game(self, voter_id):
+        """Find the game where the voter is participating"""
+        for chat_id, game in self.game_manager.games.items():
+            if game.game_state == "VOTING" and voter_id in [p.id for p in game.voting_players]:
+                return game, chat_id
+        return None, None
+
+    def _record_vote(self, game, voter_id, voted_id):
+        """Record a vote and return the voted player"""
+        game.mvp_votes[voter_id] = voted_id
+        return next(p for p in game.players if p.id == voted_id)
+
+    def _count_votes(self, game):
+        """Count votes and determine MVP(s)"""
+        vote_count = {}
+        for voted_id in game.mvp_votes.values():
+            vote_count[voted_id] = vote_count.get(voted_id, 0) + 1
+        
+        max_votes = max(vote_count.values())
+        mvp_ids = [pid for pid, votes in vote_count.items() if votes == max_votes]
+        mvps = [next(p for p in game.players if p.id == mvp_id) for mvp_id in mvp_ids]
+        
+        return mvps, max_votes
+
+    async def _handle_voting_completion(self, game, chat_id, context):
+        """Handle the completion of MVP voting"""
+        mvps, max_votes = self._count_votes(game)
+        
+        # Update database
+        try:
+            mvp_ids = [mvp.id for mvp in mvps if mvp.id > 0]  # Filter out external players
+            self.db_manager.update_mvp(game.db_game_id, mvp_ids)
+        except Exception as e:
+            print(f"Database error during MVP update: {e}")
+        
+        # Announce results
+        result_text = self._format_mvp_announcement(mvps, max_votes)
+        await context.bot.send_message(chat_id=chat_id, text=result_text)
+        
+        # Notify voters
+        await self._notify_voters_completion(game, context)
+        
+        # Clean up
+        self.game_manager.remove_game(chat_id)
+
+    def _format_mvp_announcement(self, mvps, max_votes):
+        """Format the MVP announcement message"""
+        if len(mvps) == 1:
+            return f"🏆 MVP of the game: {mvps[0].first_name} with {max_votes} votes!"
+        else:
+            names = ", ".join(p.first_name for p in mvps)
+            return f"🏆 It's a tie! MVPs of the game: {names}\nEach with {max_votes} votes!"
+
+    async def _notify_voters_completion(self, game, context):
+        """Send completion notifications to all voters"""
+        for voter_id in game.mvp_votes.keys():
+            await context.bot.send_message(
+                chat_id=voter_id,
+                text="✅ Voting complete! Results have been announced in the group."
+            )
+
+    async def _send_vote_confirmation(self, context, voter_id, voted_player):
+        """Send confirmation message to the voter"""
+        await context.bot.send_message(
+            chat_id=voter_id,
+            text=f"✅ You voted for: {voted_player.first_name}"
+        )
 
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         game = self.game_manager.get_game(chat_id)

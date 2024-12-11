@@ -175,3 +175,37 @@ class SupabaseManager:
             player_stats = self.get_player_stats(player['player_id'])
             new_elo = player_stats['elo_rating'] + round(delta)
             self.supabase.table('players').update({'elo_rating': new_elo}).eq('id', player['player_id']).execute()
+
+    def update_mvp(self, game_id, mvp_ids):
+        """Update MVP status for players in a game"""
+        try:
+            for mvp_id in mvp_ids:
+                # Skip external players
+                if mvp_id < 0:
+                    continue
+                    
+                # Update game_players table
+                self.supabase.table('game_players')\
+                    .update({'was_mvp': True})\
+                    .eq('game_id', game_id)\
+                    .eq('player_id', mvp_id)\
+                    .execute()
+                
+                # Get and update player MVP count
+                player_result = self.supabase.table('players')\
+                    .select('times_mvp')\
+                    .eq('id', mvp_id)\
+                    .single()\
+                    .execute()
+                
+                if player_result.data:
+                    current_mvp_count = player_result.data['times_mvp']
+                    self.supabase.table('players')\
+                        .update({'times_mvp': current_mvp_count + 1})\
+                        .eq('id', mvp_id)\
+                        .execute()
+            
+            return True
+        except Exception as e:
+            print(f"Error updating MVP status: {e}")
+            return False
