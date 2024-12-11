@@ -3,8 +3,9 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest, TelegramError
 
 class GameHandlers:
-    def __init__(self, game_manager):
+    def __init__(self, game_manager, db_manager):
         self.game_manager = game_manager
+        self.db_manager = db_manager
 
     async def start_game(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
@@ -39,19 +40,69 @@ class GameHandlers:
         chat_id = update.effective_chat.id
         game = self.game_manager.get_game(chat_id)
         
+        print("\n=== Starting end_game process ===")
+        print(f"Chat ID: {chat_id}")
+        print(f"Game exists: {game is not None}")
+        
         if not game:
             await update.message.reply_text("No active game!")
             return
             
+        print(f"Game state: {game.game_state}")
+        print(f"Number of players: {len(game.players)}")
+        print(f"Teams A size: {len(game.teams['Team A'])}")
+        print(f"Teams B size: {len(game.teams['Team B'])}")
+        
         if game.game_state != "IN_GAME":
             await update.message.reply_text("No active game to end!")
             return
+
+        try:
+            # Save all non-external players to database
+            print("\nSaving players to database...")
+            telegram_players = [p for p in game.players if p.id > 0]
+            print(f"Found {len(telegram_players)} non-external players")
+            
+            for player in telegram_players:
+                print(f"Saving player: {player.first_name} (ID: {player.id})")
+                self.db_manager.create_player(player)
+            
+            # Prepare player data
+            print("\nPreparing player data for game record...")
+            players_data = []
+            for player in telegram_players:
+                team = 'A' if player in game.teams["Team A"] else 'B'
+                was_captain = player in game.captains
+                print(f"Player {player.first_name}: Team {team}, Captain: {was_captain}")
+                
+                player_data = {
+                    'id': player.id,
+                    'team': team,
+                    'was_captain': was_captain,
+                    'was_mvp': False
+                }
+                players_data.append(player_data)
+            
+            print(f"\nSaving game with {len(players_data)} players...")
+            game.db_game_id = self.db_manager.save_game(
+                chat_id=chat_id,
+                score_team_a=None,
+                score_team_b=None,
+                players_data=players_data
+            )
+            print(f"Game saved with ID: {game.db_game_id}")
+            
+        except Exception as e:
+            print(f"Database error during end_game: {e}")
+            import traceback
+            traceback.print_exc()
         
         game.game_state = "SCORING"
         await update.message.reply_text(
             "Please enter the final score using the format: /score TeamA TeamB\n"
             "Example: /score 3 2"
         )
+        print("\n=== End game process completed ===")
 
     async def handle_score(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
@@ -167,6 +218,7 @@ class GameHandlers:
                 self.id = id
                 self.first_name = first_name
                 self.last_name = last_name
+                self.username = "dummy"
 
         # Add dummy players until max_players is reached
         dummy_players = [

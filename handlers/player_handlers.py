@@ -3,8 +3,9 @@ from telegram.ext import ContextTypes
 import random
 
 class PlayerHandlers:
-    def __init__(self, game_manager):
+    def __init__(self, game_manager, db_manager):
         self.game_manager = game_manager
+        self.db_manager=db_manager
 
     async def handle_join(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -340,9 +341,9 @@ class PlayerHandlers:
             await query.answer("No active team selection!")
             return
             
-        if query.from_user.id != game.current_selector.id:
-            await query.answer("It's not your turn to select!")
-            return
+        # if query.from_user.id != game.current_selector.id:
+        #     await query.answer("It's not your turn to select!")
+        #     return
             
         selected_id = int(query.data.split('_')[1])
         selected_player = next(p for p in game.players if p.id == selected_id)

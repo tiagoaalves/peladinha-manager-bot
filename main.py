@@ -9,6 +9,7 @@ from config import TOKEN
 from handlers.game_handlers import GameHandlers
 from handlers.player_handlers import PlayerHandlers
 from services.game_manager import GameManager
+from database.supabase import SupabaseManager
 
 nest_asyncio.apply()
 
@@ -17,8 +18,9 @@ async def main():
     
     # Initialize services and handlers
     game_manager = GameManager()
-    game_handlers = GameHandlers(game_manager)
-    player_handlers = PlayerHandlers(game_manager)
+    db_manager = SupabaseManager()
+    game_handlers = GameHandlers(game_manager=game_manager, db_manager=db_manager)
+    player_handlers = PlayerHandlers(game_manager=game_manager, db_manager=db_manager)
     
     # Register handlers
     app.add_handler(CommandHandler("start_game", game_handlers.start_game))
