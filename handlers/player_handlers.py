@@ -17,6 +17,12 @@ class PlayerHandlers:
             await query.answer("No active game!")
             return
             
+        # Check if user is registered
+        player_stats = self.db_manager.get_player_stats(user.id)
+        if not player_stats:
+            await query.answer("You need to register first! Start a private chat with me and use /start", show_alert=True)
+            return
+            
         if user.id in [p.id for p in game.players]:
             await query.answer("You already joined!")
             return

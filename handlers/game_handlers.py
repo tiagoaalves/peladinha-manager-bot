@@ -230,23 +230,23 @@ class GameHandlers:
 
         # Create dummy users (simulating telegram User objects)
         class DummyUser:
-            def __init__(self, id, first_name, last_name=None):
+            def __init__(self, id, first_name, username, last_name=None):
                 self.id = id
                 self.first_name = first_name
                 self.last_name = last_name
-                self.username = "dummy"
+                self.username = username
 
         # Add dummy players until max_players is reached
         dummy_players = [
-            DummyUser(1, "Test1"),
-            DummyUser(2, "Test2"),
-            DummyUser(3, "Test3"),
-            DummyUser(4, "Test4"),
-            DummyUser(5, "Test5"),
-            DummyUser(6, "Test6"),
-            DummyUser(7, "Test7"),
-            DummyUser(8, "Test8"),
-            DummyUser(9, "Test9"),
+            DummyUser(1, "Test1", "user1"),
+            DummyUser(2, "Test2", "user2"),
+            DummyUser(3, "Test3", "user3"),
+            DummyUser(4, "Test4", "user4"),
+            DummyUser(5, "Test5", "user5"),
+            DummyUser(6, "Test6", "user6"),
+            DummyUser(7, "Test7", "user7"),
+            DummyUser(8, "Test8", "user8"),
+            DummyUser(9, "Test9", "user9"),
         ]
 
         game.players = dummy_players
