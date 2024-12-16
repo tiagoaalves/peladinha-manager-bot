@@ -2,6 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 from models.game import SoccerGame
 
+
 class GameManager:
     def __init__(self):
         self.games = {}
@@ -17,12 +18,16 @@ class GameManager:
         if chat_id in self.games:
             del self.games[chat_id]
 
-    async def update_join_message(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
+    async def update_join_message(
+        self, chat_id: int, context: ContextTypes.DEFAULT_TYPE
+    ):
         game = self.get_game(chat_id)
 
-        if hasattr(game, 'join_message_id'):
+        if hasattr(game, "join_message_id"):
             try:
-                await context.bot.delete_message(chat_id=chat_id, message_id=game.join_message_id)
+                await context.bot.delete_message(
+                    chat_id=chat_id, message_id=game.join_message_id
+                )
             except:
                 pass
 
@@ -35,7 +40,7 @@ class GameManager:
         keyboard = [
             [
                 InlineKeyboardButton("Join Game ⚽", callback_data="join"),
-                InlineKeyboardButton("Leave Game 🚪", callback_data="leave")
+                InlineKeyboardButton("Leave Game 🚪", callback_data="leave"),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -43,6 +48,6 @@ class GameManager:
         message = await context.bot.send_message(
             chat_id=chat_id,
             text=players_text,
-            reply_markup=reply_markup if len(game.players) < game.max_players else None
+            reply_markup=reply_markup if len(game.players) < game.max_players else None,
         )
         game.join_message_id = message.message_id
