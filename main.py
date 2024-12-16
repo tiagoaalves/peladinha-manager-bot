@@ -14,19 +14,20 @@ from database.supabase import SupabaseManager
 
 nest_asyncio.apply()
 
+
 async def main():
     app = Application.builder().token(TOKEN).build()
-    
+
     # Initialize services and handlers
     game_manager = GameManager()
     db_manager = SupabaseManager()
     game_handlers = GameHandlers(game_manager=game_manager, db_manager=db_manager)
     player_handlers = PlayerHandlers(game_manager=game_manager, db_manager=db_manager)
     user_registration_handler = UserRegistrationHandler(db_manager=db_manager)
-    
+
     # Register handlers
     app.add_handler(user_registration_handler.get_registration_handler())
-    
+
     # Existing handlers
     app.add_handler(CommandHandler("start_game", game_handlers.start_game))
     app.add_handler(CommandHandler("end_game", game_handlers.end_game))
@@ -35,17 +36,24 @@ async def main():
     app.add_handler(CommandHandler("test_fill", game_handlers.test_fill))
     app.add_handler(CommandHandler("add_external", game_handlers.add_external))
     app.add_handler(CommandHandler("remove_external", game_handlers.remove_external))
-    
+
     app.add_handler(CallbackQueryHandler(player_handlers.handle_join, pattern="^join"))
-    app.add_handler(CallbackQueryHandler(player_handlers.handle_leave, pattern="^leave"))
-    app.add_handler(CallbackQueryHandler(player_handlers.handle_selection, pattern="^select_"))
+    app.add_handler(
+        CallbackQueryHandler(player_handlers.handle_leave, pattern="^leave")
+    )
+    app.add_handler(
+        CallbackQueryHandler(player_handlers.handle_selection, pattern="^select_")
+    )
     app.add_handler(CallbackQueryHandler(player_handlers.handle_vote, pattern="^vote_"))
-    app.add_handler(CallbackQueryHandler(player_handlers.handle_draft_choice, pattern=r"^draft_"))
-    
+    app.add_handler(
+        CallbackQueryHandler(player_handlers.handle_draft_choice, pattern=r"^draft_")
+    )
+
     print("Soccer Bot started! Press Ctrl+C to exit.")
-    
+
     # Start the bot
     await app.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 if __name__ == "__main__":
     try:
