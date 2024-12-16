@@ -6,7 +6,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from models.user import BotUser
+from models.user import Player
 
 # States for the conversation
 ENTER_USERNAME = 1
@@ -40,7 +40,7 @@ class UserRegistrationHandler:
         existing_player = self.db_manager.get_player_stats(user.id)
         if existing_player:
             await update.message.reply_text(
-                f"Welcome back {user.first_name}! You're already registered with username: {existing_player['username']}"
+                f"Welcome back {existing_player}! You're already registered with username: {existing_player['username']}"
             )
             return ConversationHandler.END
 
@@ -54,25 +54,24 @@ class UserRegistrationHandler:
 
     async def handle_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle the username input"""
-        username = update.message.text.strip()
+        display_name = update.message.text.strip()
         telegram_user = update.effective_user
 
         # Validate username
-        if len(username) < 3 or len(username) > 20:
+        if len(display_name) < 3 or len(display_name) > 20:
             await update.message.reply_text(
                 "Username must be between 3 and 20 characters.\n" "Please try again:"
             )
             return ENTER_USERNAME
 
         # Create our custom user object
-        bot_user = BotUser(telegram_user, username)
-        result = self.db_manager.create_player(bot_user)
+        player = Player(telegram_user, display_name)
+        result = self.db_manager.create_player(player)
 
         if result:
             await update.message.reply_text(
-                f"Registration successful! Welcome {username}! 🎉\n\n"
+                f"Registration successful! Welcome {display_name}! 🎉\n\n"
                 f"You can now join games in the group chat.\n"
-                f"Use /help to see all available commands."
             )
         else:
             await update.message.reply_text(

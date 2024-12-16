@@ -2,6 +2,8 @@ from supabase import create_client
 import os
 from datetime import datetime
 
+from models.user import Player
+
 
 class SupabaseManager:
     def __init__(self):
@@ -19,32 +21,14 @@ class SupabaseManager:
         """Create or update player record"""
         print(f"\nCreating/updating player: {user.first_name}")
 
-        # Safely get attributes that might not exist
-        player_data = {
-            "id": user.id,
-            "username": getattr(user, "username", None),
-            "first_name": user.first_name,
-            "last_name": getattr(user, "last_name", None),
-            "elo_rating": 1200,
-            "games_played": 0,
-            "games_won": 0,
-            "games_lost": 0,
-            "games_drawn": 0,
-            "current_streak": 0,
-            "best_streak": 0,
-            "worst_streak": 0,
-            "times_captain": 0,
-            "times_mvp": 0,
-            "last_played": datetime.utcnow().isoformat(),
-        }
-
         try:
+            # Convert Player object to dict for database
+            player_data = user.to_dict()
             result = self.supabase.table("players").upsert(player_data).execute()
             print(f"Player save result: {result.data}")
-            return result
+            return Player.from_db(result.data[0]) if result.data else None
         except Exception as e:
             print(f"Error saving player: {e}")
-            # Log the error but don't raise it
             return None
 
     def save_game(self, chat_id, score_team_a, score_team_b, players_data):
