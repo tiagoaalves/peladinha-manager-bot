@@ -19,7 +19,7 @@ class PlayerHandlers:
             return
 
         # Check if user is registered
-        player_stats = self.db_manager.get_player_stats(user.id)
+        player_stats = self.db_manager.get_player(user.id)
         if not player_stats:
             await query.answer(
                 "You need to register first! Start a private chat with me and use /start",

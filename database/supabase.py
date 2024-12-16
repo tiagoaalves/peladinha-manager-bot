@@ -68,7 +68,7 @@ class SupabaseManager:
     def update_player_stats(self, score_team_a, score_team_b, players_data):
         """Update statistics for all players in a game"""
         for player_data in players_data:
-            player = self.get_player_stats(player_data["id"])
+            player = self.get_player(player_data["id"])
 
             if not player:
                 continue
@@ -122,7 +122,7 @@ class SupabaseManager:
             except Exception as e:
                 print(f"Error updating stats for player {player_data['id']}: {e}")
 
-    def get_player_stats(self, player_id):
+    def get_player(self, player_id):
         """Get player statistics"""
         try:
             result = (
@@ -171,10 +171,10 @@ class SupabaseManager:
 
         # Calculate team ratings
         rating_a = sum(
-            self.get_player_stats(p["player_id"])["elo_rating"] for p in team_a
+            self.get_player(p["player_id"])["elo_rating"] for p in team_a
         ) / len(team_a)
         rating_b = sum(
-            self.get_player_stats(p["player_id"])["elo_rating"] for p in team_b
+            self.get_player(p["player_id"])["elo_rating"] for p in team_b
         ) / len(team_b)
 
         # Calculate expected scores
@@ -192,7 +192,7 @@ class SupabaseManager:
         # Update each player's ELO
         for player in team_a:
             delta = k_factor * (actual_a - exp_a)
-            player_stats = self.get_player_stats(player["player_id"])
+            player_stats = self.get_player(player["player_id"])
             new_elo = player_stats["elo_rating"] + round(delta)
             self.supabase.table("players").update({"elo_rating": new_elo}).eq(
                 "id", player["player_id"]
@@ -200,7 +200,7 @@ class SupabaseManager:
 
         for player in team_b:
             delta = k_factor * (actual_b - exp_b)
-            player_stats = self.get_player_stats(player["player_id"])
+            player_stats = self.get_player(player["player_id"])
             new_elo = player_stats["elo_rating"] + round(delta)
             self.supabase.table("players").update({"elo_rating": new_elo}).eq(
                 "id", player["player_id"]

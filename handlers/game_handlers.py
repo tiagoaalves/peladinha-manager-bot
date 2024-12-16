@@ -67,7 +67,7 @@ class GameHandlers:
             for player in telegram_players:
                 print(f"Processing player: {player.first_name} (ID: {player.id})")
                 # Only create new players, don't update existing ones
-                existing = self.db_manager.get_player_stats(player.id)
+                existing = self.db_manager.get_player(player.id)
                 if not existing:
                     print(f"New player, creating record: {player.first_name}")
                     self.db_manager.create_player(player)

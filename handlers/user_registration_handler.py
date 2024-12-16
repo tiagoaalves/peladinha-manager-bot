@@ -37,7 +37,7 @@ class UserRegistrationHandler:
         user = update.effective_user
 
         # Check if user is already registered
-        existing_player = self.db_manager.get_player_stats(user.id)
+        existing_player = self.db_manager.get_player(user.id)
         if existing_player:
             await update.message.reply_text(
                 f"Welcome back {existing_player}! You're already registered with username: {existing_player['username']}"
