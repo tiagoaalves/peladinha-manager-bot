@@ -4,9 +4,10 @@ from telegram.error import BadRequest, TelegramError
 
 
 class GameHandlers:
-    def __init__(self, game_manager, db_manager):
+    def __init__(self, game_manager, player_db_manager, game_db_manager):
         self.game_manager = game_manager
-        self.db_manager = db_manager
+        self.player_db_manager = player_db_manager
+        self.game_db_manager = game_db_manager
 
     async def start_game(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
@@ -67,10 +68,10 @@ class GameHandlers:
             for player in telegram_players:
                 print(f"Processing player: {player.first_name} (ID: {player.id})")
                 # Only create new players, don't update existing ones
-                existing = self.db_manager.get_player(player.id)
+                existing = self.player_db_manager.get_player(player.id)
                 if not existing:
                     print(f"New player, creating record: {player.first_name}")
-                    self.db_manager.create_player(player)
+                    self.player_db_manager.create_player(player)
                 else:
                     print(f"Existing player found: {player.first_name}")
 
@@ -93,7 +94,7 @@ class GameHandlers:
                 players_data.append(player_data)
 
             print(f"\nSaving game with {len(players_data)} players...")
-            game.db_game_id = self.db_manager.save_game(
+            game.db_game_id = self.game_db_manager.save_game(
                 chat_id=chat_id,
                 score_team_a=None,
                 score_team_b=None,
@@ -147,7 +148,9 @@ class GameHandlers:
         # Update game record in database
         try:
             if hasattr(game, "db_game_id"):
-                self.db_manager.update_game_score(game.db_game_id, score_a, score_b)
+                self.game_db_manager.update_game_score(
+                    game.db_game_id, score_a, score_b
+                )
             else:
                 print("Warning: No db_game_id found for game")
 

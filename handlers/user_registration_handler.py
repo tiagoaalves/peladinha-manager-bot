@@ -13,8 +13,8 @@ ENTER_USERNAME = 1
 
 
 class UserRegistrationHandler:
-    def __init__(self, db_manager):
-        self.db_manager = db_manager
+    def __init__(self, player_db_manager):
+        self.player_db_manager = player_db_manager
 
     def get_registration_handler(self):
         """Returns a ConversationHandler for the registration process"""
@@ -37,7 +37,7 @@ class UserRegistrationHandler:
         user = update.effective_user
 
         # Check if user is already registered
-        existing_player = self.db_manager.get_player(user.id)
+        existing_player = self.player_db_manager.get_player(user.id)
         if existing_player:
             await update.message.reply_text(
                 f"Welcome back {existing_player}! You're already registered with username: {existing_player['username']}"
@@ -66,7 +66,7 @@ class UserRegistrationHandler:
 
         # Create our custom user object
         player = Player(telegram_user, display_name)
-        result = self.db_manager.create_player(player)
+        result = self.player_db_manager.create_player(player)
 
         if result:
             await update.message.reply_text(

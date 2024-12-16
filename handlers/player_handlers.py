@@ -4,9 +4,10 @@ import random
 
 
 class PlayerHandlers:
-    def __init__(self, game_manager, db_manager):
+    def __init__(self, game_manager, player_db_manager, game_db_manager):
         self.game_manager = game_manager
-        self.db_manager = db_manager
+        self.player_db_manager = player_db_manager
+        self.game_db_manager = game_db_manager
 
     async def handle_join(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -19,7 +20,7 @@ class PlayerHandlers:
             return
 
         # Check if user is registered
-        player_stats = self.db_manager.get_player(user.id)
+        player_stats = self.player_db_manager.get_player(user.id)
         if not player_stats:
             await query.answer(
                 "You need to register first! Start a private chat with me and use /start",
@@ -293,7 +294,7 @@ class PlayerHandlers:
                 players_data.append(player_data)
 
             # Update all player stats now that we have complete information
-            self.db_manager.update_player_stats(
+            self.player_db_manager.update_player_stats(
                 score_team_a=game.score["Team A"],
                 score_team_b=game.score["Team B"],
                 players_data=players_data,

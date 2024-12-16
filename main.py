@@ -6,11 +6,13 @@ import logging
 import asyncio
 import nest_asyncio
 from config import TOKEN
+from database.base import BaseManager
+from database.game import GameDBManager
+from database.player import PlayerDBManager
 from handlers.game_handlers import GameHandlers
 from handlers.player_handlers import PlayerHandlers
 from handlers.user_registration_handler import UserRegistrationHandler
 from services.game_manager import GameManager
-from database.supabase import SupabaseManager
 
 nest_asyncio.apply()
 
@@ -18,12 +20,24 @@ nest_asyncio.apply()
 async def main():
     app = Application.builder().token(TOKEN).build()
 
+    # Initialize database managers
+    base_db_manager = BaseManager()
+    player_db_manager = PlayerDBManager()
+    game_db_manager = GameDBManager()
+
     # Initialize services and handlers
     game_manager = GameManager()
-    db_manager = SupabaseManager()
-    game_handlers = GameHandlers(game_manager=game_manager, db_manager=db_manager)
-    player_handlers = PlayerHandlers(game_manager=game_manager, db_manager=db_manager)
-    user_registration_handler = UserRegistrationHandler(db_manager=db_manager)
+    game_handlers = GameHandlers(
+        game_manager=game_manager,
+        player_db_manager=player_db_manager,
+        game_db_manager=game_db_manager,
+    )
+    player_handlers = PlayerHandlers(
+        game_manager=game_manager,
+        player_db_manager=player_db_manager,
+        game_db_manager=game_db_manager,
+    )
+    user_registration_handler = UserRegistrationHandler(player_db_manager)
 
     # Register handlers
     app.add_handler(user_registration_handler.get_registration_handler())
