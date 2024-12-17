@@ -241,10 +241,8 @@ class PlayerHandlers:
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         game = self.game_manager.get_game(chat_id)
 
-        # TODO: remove comment
         # Filter out external players (who have negative IDs)
-        # telegram_players = [p for p in game.players if p.id > 0]
-        telegram_players = game.players
+        telegram_players = [p for p in game.players if p.id > 0]
 
         # Check if we have enough Telegram players to be captains
         if len(telegram_players) < 2:
@@ -324,10 +322,9 @@ class PlayerHandlers:
             await query.answer("No active team selection!")
             return
 
-        # TODO: remove comment
-        # if query.from_user.id != game.current_selector.id:
-        #     await query.answer("It's not your turn to select!")
-        #     return
+        if query.from_user.id != game.current_selector.id:
+            await query.answer("It's not your turn to select!")
+            return
 
         selected_id = int(query.data.split("_")[1])
         selected_player = next(p for p in game.players if p.id == selected_id)
