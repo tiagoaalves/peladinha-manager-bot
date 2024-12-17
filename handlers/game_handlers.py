@@ -1,3 +1,4 @@
+from models.player import Player
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest, TelegramError
@@ -229,35 +230,55 @@ class GameHandlers:
             )
 
     async def test_fill(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Fill the game with a specified number of dummy players for testing purposes.
+        Usage: /test_fill <number_of_players>
+        """
         chat_id = update.effective_chat.id
         game = self.game_manager.get_game(chat_id)
+
+        # Validate command arguments
+        if not context.args or len(context.args) != 1:
+            await update.message.reply_text("Usage: /test_fill <number_of_players>")
+            return
 
         if not game:
             await update.message.reply_text("Start a game first with /start_game")
             return
 
-        # Create dummy users (simulating telegram User objects)
-        class DummyUser:
-            def __init__(self, id, first_name, username, last_name=None):
-                self.id = id
-                self.first_name = first_name
-                self.last_name = last_name
-                self.username = username
+        try:
+            number_of_dummies = int(context.args[0])
+            if number_of_dummies < 0:
+                await update.message.reply_text("Number of players must be positive")
+                return
+        except ValueError:
+            await update.message.reply_text("Please provide a valid number")
+            return
 
-        # Add dummy players until max_players is reached
-        dummy_players = [
-            DummyUser(1, "Test1", "user1"),
-            DummyUser(2, "Test2", "user2"),
-            DummyUser(3, "Test3", "user3"),
-            DummyUser(4, "Test4", "user4"),
-            DummyUser(5, "Test5", "user5"),
-            DummyUser(6, "Test6", "user6"),
-            DummyUser(7, "Test7", "user7"),
-            DummyUser(8, "Test8", "user8"),
-            DummyUser(9, "Test9", "user9"),
-        ]
+        # Create dummy players
+        dummy_players = []
+        for i in range(number_of_dummies):
+            # Create a mock telegram user with minimal required attributes
+            class MockTelegramUser:
+                def __init__(self, user_id, first_name, username):
+                    self.id = user_id
+                    self.first_name = first_name
+                    self.username = username
+                    self.last_name = None
 
+            # Create mock telegram user and convert to Player
+            mock_user = MockTelegramUser(
+                user_id=i - 1000,  # Use offset to avoid potential ID conflicts
+                first_name=f"Test{i}",
+                username=f"user{i}",
+            )
+            player = Player(telegram_user=mock_user, display_name=f"Test Player {i}")
+            dummy_players.append(player)
+
+        # Set the game's players to our dummy list
         game.players = dummy_players
+
+        # Update the join message
         await self.game_manager.update_join_message(chat_id, context)
 
     async def add_external(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
