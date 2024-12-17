@@ -7,11 +7,11 @@ class GameManager:
     def __init__(self):
         self.games = {}
 
-    def create_game(self, chat_id):
+    def create_game(self, chat_id) -> SoccerGame:
         self.games[chat_id] = SoccerGame()
         return self.games[chat_id]
 
-    def get_game(self, chat_id):
+    def get_game(self, chat_id) -> SoccerGame:
         return self.games.get(chat_id)
 
     def remove_game(self, chat_id):
@@ -20,7 +20,7 @@ class GameManager:
 
     async def update_join_message(
         self, chat_id: int, context: ContextTypes.DEFAULT_TYPE
-    ):
+    ) -> None:
         game = self.get_game(chat_id)
 
         if hasattr(game, "join_message_id"):
