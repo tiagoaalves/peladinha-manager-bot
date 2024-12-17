@@ -50,6 +50,7 @@ class Player:
         player.times_captain = db_record["times_captain"]
         player.times_mvp = db_record["times_mvp"]
         player.last_played = db_record["last_played"]
+        player.display_name = db_record["display_name"]
         return player
 
     def to_dict(self):
@@ -75,4 +76,5 @@ class Player:
             "times_captain": self.times_captain,
             "times_mvp": self.times_mvp,
             "last_played": self.last_played,
+            "display_name": self.display_name,
         }
