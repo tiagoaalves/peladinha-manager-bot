@@ -270,8 +270,7 @@ class PlayerHandlers:
             chat_id=chat_id,
             text=f"Captains selected!\n"
             f"Team A Captain: {game.captains[0].display_name}\n"
-            f"Team B Captain: {game.captains[1].display_name}\n\n"
-            f"Captain {game.captains[0].display_name}, choose the draft method:",
+            f"Team B Captain: {game.captains[1].display_name}\n\n",
             reply_markup=reply_markup,
         )
 
