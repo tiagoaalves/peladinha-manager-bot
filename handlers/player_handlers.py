@@ -1,3 +1,4 @@
+from models.game_player import GamePlayer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import random
@@ -12,7 +13,8 @@ class PlayerHandlers:
     async def handle_join(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         chat_id = query.message.chat_id
-        user = query.from_user
+        telegram_user = query.from_user
+        player = GamePlayer(telegram_user.id, telegram_user, "")
         game = self.game_manager.get_game(chat_id)
 
         if not game or game.game_state != "WAITING":
@@ -20,15 +22,17 @@ class PlayerHandlers:
             return
 
         # Check if user is registered
-        player_stats = self.player_db_manager.get_player(user.id)
-        if not player_stats:
+        display_name = self.player_db_manager.get_player_display_name(player.id)
+        if not display_name:
             await query.answer(
                 "You need to register first! Start a private chat with me and use /start",
                 show_alert=True,
             )
             return
+        else:
+            player.display_name = display_name
 
-        if user.id in [p.id for p in game.players]:
+        if player.id in [p.id for p in game.players]:
             await query.answer("You already joined!")
             return
 
@@ -36,7 +40,7 @@ class PlayerHandlers:
             await query.answer("Game is full!")
             return
 
-        game.players.append(user)
+        game.players.append(player)
         await self.game_manager.update_join_message(chat_id, context)
         await query.answer("You joined the game!")
 
@@ -103,16 +107,16 @@ class PlayerHandlers:
             await query.message.delete()
 
             # Format teams with one player per line
-            team_a_list = "\n".join(p.first_name for p in team_a_players)
-            team_b_list = "\n".join(p.first_name for p in team_b_players)
+            team_a_list = "\n".join(p.display_name for p in team_a_players)
+            team_b_list = "\n".join(p.display_name for p in team_b_players)
 
             # Then send a new message with the final teams
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="Teams are complete!\n\n"
-                f"Team A (Captain: {game.captains[0].first_name}):\n"
+                f"Team A (Captain: {game.captains[0].display_name}):\n"
                 f"{team_a_list}\n\n"
-                f"Team B (Captain: {game.captains[1].first_name}):\n"
+                f"Team B (Captain: {game.captains[1].display_name}):\n"
                 f"{team_b_list}\n\n"
                 "Good luck! Use /end_game when finished.",
             )
@@ -127,24 +131,24 @@ class PlayerHandlers:
             ]
 
             keyboard = [
-                [InlineKeyboardButton(p.first_name, callback_data=f"select_{p.id}")]
+                [InlineKeyboardButton(p.display_name, callback_data=f"select_{p.id}")]
                 for p in remaining_players
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             # Format current teams status with one player per line
-            team_a_text = f"Team A (Captain: {game.captains[0].first_name}):"
+            team_a_text = f"Team A (Captain: {game.captains[0].display_name}):"
             if game.teams["Team A"]:
                 team_a_text += "\n" + "\n".join(
-                    p.first_name for p in game.teams["Team A"]
+                    p.display_name for p in game.teams["Team A"]
                 )
             else:
                 team_a_text += "\nNo players"
 
-            team_b_text = f"Team B (Captain: {game.captains[1].first_name}):"
+            team_b_text = f"Team B (Captain: {game.captains[1].display_name}):"
             if game.teams["Team B"]:
                 team_b_text += "\n" + "\n".join(
-                    p.first_name for p in game.teams["Team B"]
+                    p.display_name for p in game.teams["Team B"]
                 )
             else:
                 team_b_text += "\nNo players"
@@ -152,7 +156,7 @@ class PlayerHandlers:
             await query.message.edit_text(
                 f"{team_a_text}\n\n"
                 f"{team_b_text}\n\n"
-                f"{game.current_selector.first_name}'s turn to select:",
+                f"{game.current_selector.display_name}'s turn to select:",
                 reply_markup=reply_markup,
             )
 
@@ -176,11 +180,7 @@ class PlayerHandlers:
         # Create voting keyboard
         keyboard = []
         for player in game.players:
-            player_name = (
-                f"{player.first_name} {player.last_name}"
-                if player.last_name
-                else player.first_name
-            )
+            player_name = f"{player.display_name}"
             button = InlineKeyboardButton(
                 player_name, callback_data=f"vote_{player.id}"
             )
@@ -211,7 +211,7 @@ class PlayerHandlers:
                 )
                 game.voting_players.append(player)  # Add to voting players list
             except (BadRequest, TelegramError) as e:
-                failed_players.append(player.first_name)
+                failed_players.append(player.display_name)
                 continue
 
         # If any players couldn't receive messages, inform the group
@@ -316,9 +316,9 @@ class PlayerHandlers:
     def _format_mvp_announcement(self, mvps, max_votes):
         """Format the MVP announcement message"""
         if len(mvps) == 1:
-            return f"🏆 MVP of the game: {mvps[0].first_name} with {max_votes} votes!"
+            return f"🏆 MVP of the game: {mvps[0].display_name} with {max_votes} votes!"
         else:
-            names = ", ".join(p.first_name for p in mvps)
+            names = ", ".join(p.display_name for p in mvps)
             return f"🏆 It's a tie! MVPs of the game: {names}\nEach with {max_votes} votes!"
 
     async def _notify_voters_completion(self, game, context):
@@ -332,14 +332,16 @@ class PlayerHandlers:
     async def _send_vote_confirmation(self, context, voter_id, voted_player):
         """Send confirmation message to the voter"""
         await context.bot.send_message(
-            chat_id=voter_id, text=f"✅ You voted for: {voted_player.first_name}"
+            chat_id=voter_id, text=f"✅ You voted for: {voted_player.display_name}"
         )
 
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         game = self.game_manager.get_game(chat_id)
 
+        # TODO: remove comment
         # Filter out external players (who have negative IDs)
-        telegram_players = [p for p in game.players if p.id > 0]
+        # telegram_players = [p for p in game.players if p.id > 0]
+        telegram_players = game.players
 
         # Check if we have enough Telegram players to be captains
         if len(telegram_players) < 2:
@@ -366,9 +368,9 @@ class PlayerHandlers:
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"Captains selected!\n"
-            f"Team A Captain: {game.captains[0].first_name}\n"
-            f"Team B Captain: {game.captains[1].first_name}\n\n"
-            f"Captain {game.captains[0].first_name}, choose the draft method:",
+            f"Team A Captain: {game.captains[0].display_name}\n"
+            f"Team B Captain: {game.captains[1].display_name}\n\n"
+            f"Captain {game.captains[0].display_name}, choose the draft method:",
             reply_markup=reply_markup,
         )
 
@@ -392,7 +394,7 @@ class PlayerHandlers:
         # Get players available for selection
         remaining_players = [p for p in game.players if p not in game.captains]
         keyboard = [
-            [InlineKeyboardButton(p.first_name, callback_data=f"select_{p.id}")]
+            [InlineKeyboardButton(p.display_name, callback_data=f"select_{p.id}")]
             for p in remaining_players
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -402,9 +404,9 @@ class PlayerHandlers:
         )
         await query.message.edit_text(
             f"Draft Method: {method_name}\n\n"
-            f"Team A Captain: {game.captains[0].first_name}\n"
-            f"Team B Captain: {game.captains[1].first_name}\n\n"
-            f"{game.current_selector.first_name}, select your first player:",
+            f"Team A Captain: {game.captains[0].display_name}\n"
+            f"Team B Captain: {game.captains[1].display_name}\n\n"
+            f"{game.current_selector.display_name}, select your first player:",
             reply_markup=reply_markup,
         )
 
@@ -419,6 +421,7 @@ class PlayerHandlers:
             await query.answer("No active team selection!")
             return
 
+        # TODO: remove comment
         # if query.from_user.id != game.current_selector.id:
         #     await query.answer("It's not your turn to select!")
         #     return
@@ -469,10 +472,10 @@ class PlayerHandlers:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="Teams are complete!\n\n"
-                f"Team A (Captain: {game.captains[0].first_name}):\n"
-                f"{chr(10).join(p.first_name for p in team_a_players)}\n\n"
-                f"Team B (Captain: {game.captains[1].first_name}):\n"
-                f"{chr(10).join(p.first_name for p in team_b_players)}\n\n"
+                f"Team A (Captain: {game.captains[0].display_name}):\n"
+                f"{chr(10).join(p.display_name for p in team_a_players)}\n\n"
+                f"Team B (Captain: {game.captains[1].display_name}):\n"
+                f"{chr(10).join(p.display_name for p in team_b_players)}\n\n"
                 "Good luck! Use /end_game when finished.",
             )
         else:
@@ -485,23 +488,23 @@ class PlayerHandlers:
             ]
 
             keyboard = [
-                [InlineKeyboardButton(p.first_name, callback_data=f"select_{p.id}")]
+                [InlineKeyboardButton(p.display_name, callback_data=f"select_{p.id}")]
                 for p in remaining_players
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             # Show current teams status
-            team_a_list = [game.captains[0].first_name] + [
-                p.first_name for p in game.teams["Team A"]
+            team_a_list = [game.captains[0].display_name] + [
+                p.display_name for p in game.teams["Team A"]
             ]
-            team_b_list = [game.captains[1].first_name] + [
-                p.first_name for p in game.teams["Team B"]
+            team_b_list = [game.captains[1].display_name] + [
+                p.display_name for p in game.teams["Team B"]
             ]
 
             await query.message.edit_text(
                 f"Team A:\n{chr(10).join(team_a_list)}\n\n"
                 f"Team B:\n{chr(10).join(team_b_list)}\n\n"
-                f"{game.current_selector.first_name}'s turn to select:",
+                f"{game.current_selector.display_name}'s turn to select:",
                 reply_markup=reply_markup,
             )
 

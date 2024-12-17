@@ -33,7 +33,7 @@ class GameManager:
 
         players_text = "Players joined:\n\n"
         for i, player in enumerate(game.players, 1):
-            players_text += f"{i}. {player.first_name} {player.last_name}\n"
+            players_text += f"{i}. {player.display_name}\n"
 
         players_text += f"\n{len(game.players)}/{game.max_players} players"
 

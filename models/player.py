@@ -7,8 +7,6 @@ class Player:
     def __init__(self, telegram_user=None, display_name=None):
         if telegram_user:
             self.id = telegram_user.id
-            self.first_name = telegram_user.first_name
-            self.last_name = telegram_user.last_name
             self.username = telegram_user.username
             self.display_name = display_name
             self.elo_rating = 1200  # Default for new players
@@ -37,8 +35,6 @@ class Player:
         player = cls()  # Create empty player instance
         player.id = db_record["id"]
         player.username = db_record["username"]
-        player.first_name = db_record["first_name"]
-        player.last_name = db_record["last_name"]
         player.elo_rating = db_record["elo_rating"]
         player.games_played = db_record["games_played"]
         player.games_won = db_record["games_won"]
@@ -63,8 +59,6 @@ class Player:
         return {
             "id": self.id,
             "username": self.username,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
             "elo_rating": self.elo_rating,
             "games_played": self.games_played,
             "games_won": self.games_won,

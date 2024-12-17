@@ -66,16 +66,6 @@ class GameHandlers:
             telegram_players = [p for p in game.players if p.id > 0]
             print(f"Found {len(telegram_players)} non-external players")
 
-            for player in telegram_players:
-                print(f"Processing player: {player.first_name} (ID: {player.id})")
-                # Only create new players, don't update existing ones
-                existing = self.player_db_manager.get_player(player.id)
-                if not existing:
-                    print(f"New player, creating record: {player.first_name}")
-                    self.player_db_manager.create_player(player)
-                else:
-                    print(f"Existing player found: {player.first_name}")
-
             # Prepare player data
             print("\nPreparing player data for game record...")
             players_data = []
@@ -83,7 +73,7 @@ class GameHandlers:
                 team = "A" if player in game.teams["Team A"] else "B"
                 was_captain = player in game.captains
                 print(
-                    f"Player {player.first_name}: Team {team}, Captain: {was_captain}"
+                    f"Player {player.display_name}: Team {team}, Captain: {was_captain}"
                 )
 
                 player_data = {
@@ -184,11 +174,7 @@ class GameHandlers:
         # Create voting keyboard
         keyboard = []
         for player in game.players:
-            player_name = (
-                f"{player.first_name} {player.last_name}"
-                if player.last_name
-                else player.first_name
-            )
+            player_name = f"{player.display_name}"
             button = InlineKeyboardButton(
                 player_name, callback_data=f"vote_{player.id}"
             )
@@ -219,7 +205,7 @@ class GameHandlers:
                 )
                 game.voting_players.append(player)  # Add to voting players list
             except (BadRequest, TelegramError) as e:
-                failed_players.append(player.first_name)
+                failed_players.append(player.display_name)
                 continue
 
         # If any players couldn't receive messages, inform the group
@@ -260,16 +246,13 @@ class GameHandlers:
         for i in range(number_of_dummies):
             # Create a mock telegram user with minimal required attributes
             class MockTelegramUser:
-                def __init__(self, user_id, first_name, username):
+                def __init__(self, user_id, username):
                     self.id = user_id
-                    self.first_name = first_name
                     self.username = username
-                    self.last_name = None
 
             # Create mock telegram user and convert to Player
             mock_user = MockTelegramUser(
                 user_id=i - 1000,  # Use offset to avoid potential ID conflicts
-                first_name=f"Test{i}",
                 username=f"user{i}",
             )
             player = Player(telegram_user=mock_user, display_name=f"Test Player {i}")
@@ -313,7 +296,7 @@ class GameHandlers:
         external_player = ExternalPlayer(external_id, player_name)
 
         # Check if player with same name already exists
-        if any(p.first_name == player_name for p in game.players):
+        if any(p.display_name == player_name for p in game.players):
             await context.bot.send_message(
                 chat_id=chat_id, text=f"Player named '{player_name}' already exists!"
             )
@@ -348,7 +331,7 @@ class GameHandlers:
         # Find and remove external player
         external_player = None
         for player in game.players:
-            if player.first_name == player_name and player.id < 0:
+            if player.display_name == player_name and player.id < 0:
                 external_player = player
                 break
 
@@ -366,7 +349,6 @@ class GameHandlers:
 
 
 class ExternalPlayer:
-    def __init__(self, id: int, first_name: str):
+    def __init__(self, id: int, display_name: str):
         self.id = id  # We'll use negative IDs for external players to avoid conflicts
-        self.first_name = first_name
-        self.last_name = None
+        self.display_name = display_name

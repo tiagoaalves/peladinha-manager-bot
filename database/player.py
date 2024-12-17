@@ -77,8 +77,6 @@ class PlayerDBManager(BaseManager):
             "times_mvp": player.times_mvp,
             "elo_rating": player.elo_rating,
             "username": player.username,
-            "first_name": player.first_name,
-            "last_name": player.last_name,
             "display_name": player.display_name,
         }
 
@@ -103,3 +101,17 @@ class PlayerDBManager(BaseManager):
         )
 
         return new_stats
+
+    def get_player_display_name(self, player_id) -> str | None:
+        """Get player statistics"""
+        try:
+            result = (
+                self.supabase.table("players")
+                .select("display_name")
+                .eq("id", player_id)
+                .execute()
+            )
+            return result.data[0]["display_name"]
+        except Exception as e:
+            print(f"Error getting player stats: {e}")
+            return None
