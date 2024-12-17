@@ -47,7 +47,7 @@ class UserRegistrationHandler:
         await update.message.reply_text(
             "Welcome to FIEGSI Peladinhas! 🏆 \n\n"
             "To get started, please enter your preferred username.\n"
-            "This will be used to identify you in games and statistics."
+            "Try to use something that easily identifies you in the group chat."
         )
 
         return ENTER_USERNAME
