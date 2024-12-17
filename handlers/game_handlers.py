@@ -352,7 +352,13 @@ class GameHandlers:
                 external_player = player
                 break
 
-        if not external_player:
+        if external_player:
+            game.players.remove(external_player)
+            await self.game_manager.update_join_message(chat_id, context)
+            await context.bot.send_message(
+                chat_id=chat_id, text=f"Removed external player: {player_name}"
+            )
+        else:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=f"No external player found with name: {player_name}",
