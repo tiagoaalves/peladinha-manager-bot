@@ -6,7 +6,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from models.user import Player
+from models.player import Player
 
 # States for the conversation
 ENTER_USERNAME = 1
@@ -40,7 +40,7 @@ class UserRegistrationHandler:
         existing_player = self.player_db_manager.get_player(user.id)
         if existing_player:
             await update.message.reply_text(
-                f"Welcome back {existing_player}! You're already registered with username: {existing_player['username']}"
+                f"Welcome back {existing_player.display_name}! You're already registered!"
             )
             return ConversationHandler.END
 
