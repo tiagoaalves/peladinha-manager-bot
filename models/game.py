@@ -1,7 +1,7 @@
 class SoccerGame:
     def __init__(self):
         self.players = []
-        self.max_players = 10
+        self.max_players = 14
         self.captains = []
         self.teams = {"Team A": [], "Team B": []}
         self.current_selector = None
