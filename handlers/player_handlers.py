@@ -408,3 +408,35 @@ class PlayerHandlers:
             )
 
         await query.answer()
+
+    async def show_player_stats(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        user = update.effective_user
+        player = self.player_db_manager.get_player(user.id)
+
+        if not player:
+            await update.message.reply_text("You haven't played any games yet!")
+            return
+
+        win_rate = (
+            (player.games_won / player.games_played * 100)
+            if player.games_played > 0
+            else 0
+        )
+
+        stats = (
+            f"📋 Stats for {player.display_name}:\n\n"
+            f"🏆 ELO Rating: {player.elo_rating}\n"
+            f"📈 Win Rate: {win_rate:.1f}%\n"
+            f"🌟 Best Streak: {player.best_streak}\n"
+            f"🔥 Current Streak: {player.current_streak}\n"
+            f"✅ Wins: {player.games_won}\n"
+            f"💔 Losses: {player.games_lost}\n"
+            f"🤝 Draws: {player.games_drawn}\n"
+            f"⚽ Games Played: {player.games_played}\n"
+            f"👑 Times MVP: {player.times_mvp}\n"
+            f"🫡 Times Captain: {player.times_captain}\n"
+        )
+
+        await update.message.reply_text(stats)
