@@ -11,3 +11,4 @@ class SoccerGame:
         self.selection_round = 0
         self.score = {"Team A": None, "Team B": None}
         self.db_game_id = None
+        self.join_message_id = None

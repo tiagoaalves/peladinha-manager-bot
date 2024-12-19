@@ -23,7 +23,7 @@ class GameManager:
     ) -> None:
         game = self.get_game(chat_id)
 
-        if hasattr(game, "join_message_id"):
+        if game.join_message_id:
             try:
                 await context.bot.delete_message(
                     chat_id=chat_id, message_id=game.join_message_id
