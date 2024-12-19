@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from database.base import BaseManager
+from models.game import SoccerGame
+from models.game_player import GamePlayer
 
 
 class GameDBManager(BaseManager):
@@ -47,3 +49,55 @@ class GameDBManager(BaseManager):
         except Exception as e:
             print(f"Error updating game score: {e}")
             return False
+
+    def save_active_game_players(self, chat_id: str, players: list):
+        """Save just the players in an active game"""
+        game_state = {
+            "chat_id": str(chat_id),
+            "player_ids": [p.id for p in players],
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+
+        try:
+            self.supabase.table("active_games").upsert(game_state).execute()
+        except Exception as e:
+            print(f"Error saving game players: {e}")
+
+    def load_active_games(self) -> dict:
+        """Load active games and reconstruct GamePlayer objects"""
+        try:
+            result = self.supabase.table("active_games").select("*").execute()
+            games = {}
+
+            for game_data in result.data:
+                game = SoccerGame()
+                if game_data["player_ids"]:
+                    players_result = (
+                        self.supabase.table("players")
+                        .select("id, display_name")
+                        .in_("id", game_data["player_ids"])
+                        .execute()
+                    )
+
+                    for player_info in players_result.data:
+                        game_player = GamePlayer(
+                            id=player_info["id"],
+                            telegram_user=None,
+                            display_name=player_info["display_name"],
+                        )
+                        game.players.append(game_player)
+
+                games[game_data["chat_id"]] = game
+            return games
+        except Exception as e:
+            print(f"Error loading active games: {e}")
+            return {}
+
+    def remove_active_game(self, chat_id):
+        """Remove game from active games when completed"""
+        try:
+            self.supabase.table("active_games").delete().eq(
+                "chat_id", str(chat_id)
+            ).execute()
+        except Exception as e:
+            print(f"Error removing active game: {e}")

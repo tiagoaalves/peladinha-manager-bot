@@ -41,6 +41,7 @@ class PlayerHandlers:
             return
 
         game.players.append(player)
+        self.game_db_manager.save_active_game_players(chat_id, game.players)
         await self.game_manager.update_join_message(chat_id, context)
         await query.answer("You joined the game!")
 
@@ -62,6 +63,7 @@ class PlayerHandlers:
             return
 
         game.players = [p for p in game.players if p.id != user.id]
+        self.game_db_manager.save_active_game_players(chat_id, game.players)
         await self.game_manager.update_join_message(chat_id, context)
         await query.answer("You left the game!")
 
@@ -214,6 +216,7 @@ class PlayerHandlers:
         await self._notify_voters_completion(game, context)
 
         # Clean up
+        self.game_db_manager.remove_active_game(chat_id)
         self.game_manager.remove_game(chat_id)
 
     def _format_mvp_announcement(self, mvps, max_votes):

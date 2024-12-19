@@ -1,21 +1,26 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
+from database.game import GameDBManager
 from models.game import SoccerGame
 
 
 class GameManager:
-    def __init__(self):
-        self.games = {}
+    def __init__(self, game_db_manager: GameDBManager):
+        self.game_db_manager = game_db_manager
+        self.games = self.game_db_manager.load_active_games()
 
     def create_game(self, chat_id) -> SoccerGame:
-        self.games[chat_id] = SoccerGame()
-        return self.games[chat_id]
+        game = SoccerGame()
+        self.games[chat_id] = game
+        self.game_db_manager.save_active_game_players(chat_id, game.players)
+        return game
 
     def get_game(self, chat_id) -> SoccerGame:
         return self.games.get(chat_id)
 
     def remove_game(self, chat_id):
         if chat_id in self.games:
+            self.game_db_manager.remove_active_game(chat_id)
             del self.games[chat_id]
 
     async def update_join_message(
