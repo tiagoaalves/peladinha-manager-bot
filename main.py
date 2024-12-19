@@ -26,7 +26,7 @@ async def main():
     game_db_manager = GameDBManager()
 
     # Initialize services and handlers
-    game_manager = GameManager()
+    game_manager = GameManager(game_db_manager)
     game_handlers = GameHandlers(
         game_manager=game_manager,
         player_db_manager=player_db_manager,
