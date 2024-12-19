@@ -443,3 +443,39 @@ class PlayerHandlers:
         )
 
         await update.message.reply_text(stats)
+
+    async def show_leaderboard(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        """Display top 10 players by ELO rating (minimum 5 games played)"""
+        top_players = self.player_db_manager.get_leaderboard()
+
+        if not top_players:
+            await update.message.reply_text(
+                "No players with enough games yet! Play more to appear on the leaderboard."
+            )
+            return
+
+        # Create leaderboard message
+        message = "🏆 ELO Rating Leaderboard 🏆\n\n"
+
+        for i, player in enumerate(top_players, 1):
+            # Calculate win rate
+            win_rate = (
+                (player.games_won / player.games_played * 100)
+                if player.games_played > 0
+                else 0
+            )
+
+            # Add medal emoji for top 3
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, "👤")
+
+            # Format player stats
+            message += (
+                f"{medal} {i}. {player.display_name}\n"
+                f"   • ELO: {player.elo_rating}\n"
+                f"   • Win Rate: {win_rate:.1f}%\n"
+                f"   • W/L/D: {player.games_won}/{player.games_lost}/{player.games_drawn}\n"
+            )
+
+        await update.message.reply_text(message)

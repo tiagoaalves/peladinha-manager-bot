@@ -27,16 +27,16 @@ class PlayerDBManager(BaseManager):
 
     def get_leaderboard(self, min_games=5) -> list[Player]:
         """Get top players by ELO rating"""
-        data = (
+        result = (
             self.supabase.table("players")
             .select("*")
             .gte("games_played", min_games)
             .order("elo_rating", desc=True)
-            .limit(10)
+            .limit(5)
             .execute()
         )
 
-        return [Player.from_db(player) for player in data]
+        return [Player.from_db(player) for player in result.data]
 
     def update_player_stats(self, score_team_a, score_team_b, players_data) -> None:
         """Update statistics for all players in a game"""
