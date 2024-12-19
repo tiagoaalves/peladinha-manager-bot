@@ -2,6 +2,7 @@ from models.player import Player
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest, TelegramError
+from decorators.admin import admin_only
 
 
 class GameHandlers:
@@ -105,6 +106,7 @@ class GameHandlers:
             "Example: /score 3 2"
         )
 
+    @admin_only
     async def handle_score(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
         game = self.game_manager.get_game(chat_id)
@@ -215,6 +217,7 @@ class GameHandlers:
                 "These players won't participate in the MVP voting."
             )
 
+    @admin_only
     async def test_fill(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         Fill the game with a specified number of dummy players for testing purposes.
