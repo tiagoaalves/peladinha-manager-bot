@@ -7,6 +7,7 @@ from telegram.ext import (
     filters,
 )
 from models.player import Player
+from decorators.chat import private_chat_only
 
 # States for the conversation
 ENTER_USERNAME = 1
@@ -30,6 +31,7 @@ class UserRegistrationHandler:
             fallbacks=[],
         )
 
+    @private_chat_only
     async def start_registration(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
