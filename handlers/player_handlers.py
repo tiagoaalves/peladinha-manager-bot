@@ -437,9 +437,9 @@ class PlayerHandlers:
             f"✅ Wins: {player.games_won}\n"
             f"💔 Losses: {player.games_lost}\n"
             f"🤝 Draws: {player.games_drawn}\n"
-            f"⚽ Games Played: {player.games_played}\n"
             f"👑 Times MVP: {player.times_mvp}\n"
             f"🫡 Times Captain: {player.times_captain}\n"
+            f"⚽ Games Played: {player.games_played}\n"
         )
 
         await update.message.reply_text(stats)
