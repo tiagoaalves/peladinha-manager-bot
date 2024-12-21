@@ -47,18 +47,9 @@ class GameHandlers:
         chat_id = update.effective_chat.id
         game = self.game_manager.get_game(chat_id)
 
-        print("\n=== Starting end_game process ===")
-        print(f"Chat ID: {chat_id}")
-        print(f"Game exists: {game is not None}")
-
         if not game:
             await update.message.reply_text("No active game!")
             return
-
-        print(f"Game state: {game.game_state}")
-        print(f"Number of players: {len(game.players)}")
-        print(f"Teams A size: {len(game.teams['Team A'])}")
-        print(f"Teams B size: {len(game.teams['Team B'])}")
 
         if game.game_state != "IN_GAME":
             await update.message.reply_text("No active game to end!")
@@ -66,19 +57,13 @@ class GameHandlers:
 
         try:
             # Handle player records
-            print("\nProcessing players...")
             telegram_players = [p for p in game.players if p.id > 0]
-            print(f"Found {len(telegram_players)} non-external players")
 
             # Prepare player data
-            print("\nPreparing player data for game record...")
             players_data = []
             for player in telegram_players:
                 team = "A" if player in game.teams["Team A"] else "B"
                 was_captain = player in game.captains
-                print(
-                    f"Player {player.display_name}: Team {team}, Captain: {was_captain}"
-                )
 
                 player_data = {
                     "id": player.id,
@@ -88,14 +73,12 @@ class GameHandlers:
                 }
                 players_data.append(player_data)
 
-            print(f"\nSaving game with {len(players_data)} players...")
             game.db_game_id = self.game_db_manager.save_game(
                 chat_id=chat_id,
                 score_team_a=None,
                 score_team_b=None,
                 players_data=players_data,
             )
-            print(f"Game saved with ID: {game.db_game_id}")
 
         except Exception as e:
             print(f"Database error during end_game: {e}")
