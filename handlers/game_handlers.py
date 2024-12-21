@@ -6,10 +6,13 @@ from decorators.admin import admin_only
 
 
 class GameHandlers:
-    def __init__(self, game_manager, player_db_manager, game_db_manager):
+    def __init__(
+        self, game_manager, player_db_manager, game_db_manager, elo_db_manager
+    ):
         self.game_manager = game_manager
         self.player_db_manager = player_db_manager
         self.game_db_manager = game_db_manager
+        self.elo_db_manager = elo_db_manager
 
     async def start_game(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
@@ -144,6 +147,8 @@ class GameHandlers:
                 self.game_db_manager.update_game_score(
                     game.db_game_id, score_a, score_b
                 )
+                # Process ELO ratings after updating score
+                self.elo_db_manager.process_game_ratings(game.db_game_id)
             else:
                 print("Warning: No db_game_id found for game")
 

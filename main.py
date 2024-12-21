@@ -1,12 +1,11 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram import Update
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from datetime import datetime
-import random
-import logging
 import asyncio
 import nest_asyncio
 from config import TOKEN
 from database.base import BaseManager
+from database.elo import EloDBManager
 from database.game import GameDBManager
 from database.player import PlayerDBManager
 from handlers.game_handlers import GameHandlers
@@ -24,6 +23,7 @@ async def main():
     base_db_manager = BaseManager()
     player_db_manager = PlayerDBManager()
     game_db_manager = GameDBManager()
+    elo_db_manager = EloDBManager()
 
     # Initialize services and handlers
     game_manager = GameManager(game_db_manager)
@@ -31,6 +31,7 @@ async def main():
         game_manager=game_manager,
         player_db_manager=player_db_manager,
         game_db_manager=game_db_manager,
+        elo_db_manager=elo_db_manager,
     )
     player_handlers = PlayerHandlers(
         game_manager=game_manager,
