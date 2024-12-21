@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 class PlayerIdUpdater(BaseManager):
     def __init__(self):
         super().__init__()
-        self.old_id = "old_id"
-        self.new_id = "new_id"
+        self.old_id = 2015
+        self.new_id = 7979760985
 
     def validate_player(self):
         """Verify player exists and get their current data"""
