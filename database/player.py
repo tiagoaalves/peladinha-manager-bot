@@ -25,6 +25,20 @@ class PlayerDBManager(BaseManager):
             print(f"Error getting player stats: {e}")
             return None
 
+    def get_player_by_display_name(self, player_display_name) -> Player | None:
+        """Get player statistics"""
+        try:
+            result = (
+                self.supabase.table("players")
+                .select("*")
+                .eq("display_name", player_display_name)
+                .execute()
+            )
+            return Player.from_db(result.data[0]) if result.data else None
+        except Exception as e:
+            print(f"Error getting player stats: {e}")
+            return None
+
     def get_leaderboard(self, min_games=5) -> list[Player]:
         """Get top players by ELO rating"""
         result = (

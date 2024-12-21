@@ -51,7 +51,7 @@ async def main():
     app.add_handler(CommandHandler("test_fill", game_handlers.test_fill))
     app.add_handler(CommandHandler("add_external", game_handlers.add_external))
     app.add_handler(CommandHandler("remove_external", game_handlers.remove_external))
-    app.add_handler(CommandHandler("my_stats", player_handlers.show_player_stats))
+    app.add_handler(CommandHandler("stats", player_handlers.show_player_stats))
     app.add_handler(CallbackQueryHandler(player_handlers.handle_join, pattern="^join"))
     app.add_handler(CommandHandler("leaderboard", player_handlers.show_leaderboard))
 

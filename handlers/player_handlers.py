@@ -415,11 +415,21 @@ class PlayerHandlers:
     async def show_player_stats(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
-        user = update.effective_user
-        player = self.player_db_manager.get_player(user.id)
+        if len(context.args) > 1:
+            raise ValueError
+
+        if not context.args:
+            user_id = update.effective_user.id
+            player = self.player_db_manager.get_player(user_id)
+
+        else:
+            player_display_name = context.args[0]
+            player = self.player_db_manager.get_player_by_display_name(
+                player_display_name
+            )
 
         if not player:
-            await update.message.reply_text("You haven't played any games yet!")
+            await update.message.reply_text("Player not found!")
             return
 
         win_rate = (
