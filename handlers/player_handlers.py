@@ -42,6 +42,7 @@ class PlayerHandlers:
 
         game.players.append(player)
         self.game_db_manager.save_active_game_players(chat_id, game.players)
+        await context.bot.send_message(chat_id, f"{player.display_name} joined!")
         await self.game_manager.update_join_message(chat_id, context)
         await query.answer("You joined the game!")
 
@@ -51,19 +52,23 @@ class PlayerHandlers:
     async def handle_leave(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         chat_id = query.message.chat_id
-        user = query.from_user
+        telegram_user = query.from_user
+        player = GamePlayer(telegram_user.id, telegram_user, "")
         game = self.game_manager.get_game(chat_id)
 
         if not game or game.game_state != "WAITING":
             await query.answer("No active game!")
             return
 
-        if user.id not in [p.id for p in game.players]:
+        if player.id not in [p.id for p in game.players]:
             await query.answer("You haven't joined the game!")
             return
 
-        game.players = [p for p in game.players if p.id != user.id]
+        display_name = self.player_db_manager.get_player_display_name(player.id)
+
+        game.players = [p for p in game.players if p.id != player.id]
         self.game_db_manager.save_active_game_players(chat_id, game.players)
+        await context.bot.send_message(chat_id, f"{display_name} left!")
         await self.game_manager.update_join_message(chat_id, context)
         await query.answer("You left the game!")
 
