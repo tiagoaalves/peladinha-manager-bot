@@ -363,17 +363,63 @@ class PlayerHandlers:
             else:  # Fourth pick of sequence
                 game.current_selector = game.captains[0]  # Goes back to A
 
-        # Check if teams are complete
         players_per_team = (game.max_players - 2) // 2
         if (
             len(game.teams["Team A"]) == players_per_team
             and len(game.teams["Team B"]) == players_per_team
         ):
-            game.game_state = "IN_GAME"
+            game.game_state = "COLOR_SELECTION"
+
+            # Simple two-option keyboard
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "We'll wear white ⚪", callback_data="color_white"
+                    ),
+                    InlineKeyboardButton(
+                        "We'll wear colored 🔵", callback_data="color_colored"
+                    ),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"Teams are set! {game.captains[1].display_name} (Team B Captain), choose your team's shirts:",
+                reply_markup=reply_markup,
+            )
 
         # Update the teams message
         await self.game_manager.update_teams_message(chat_id, context)
         await query.answer()
+
+    async def handle_color_selection(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        game = self.game_manager.get_game(chat_id)
+
+        if not game or game.game_state != "COLOR_SELECTION":
+            await query.answer("No active color selection!")
+            return
+
+        if query.from_user.id != game.captains[1].id:
+            await query.answer("Only Team B captain can select the color!")
+            return
+
+        choice = query.data.split("_")[1]
+        print("choice")
+        print(choice)
+        game.team_b_white = choice == "white"
+        game.game_state = "IN_GAME"
+
+        # Delete color selection message
+        await query.message.delete()
+
+        # Show final teams with colors
+        await self.game_manager.update_teams_message(chat_id, context)
+        await query.answer("Color choice confirmed!")
 
     async def show_player_stats(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

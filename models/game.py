@@ -13,3 +13,4 @@ class SoccerGame:
         self.db_game_id = None
         self.join_message_id = None
         self.teams_message_id = None
+        self.team_b_white = None

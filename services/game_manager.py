@@ -74,17 +74,27 @@ class GameManager:
 
         # Format teams message
         teams_text = "Current Teams:\n\n"
-        teams_text += f"Team A (Captain: {game.captains[0].display_name}):\n"
+
+        # Add team colors only after color selection
+        if game.game_state == "IN_GAME":
+            team_a_color = "Colored 🔵" if game.team_b_white else "White ⚪"
+            team_b_color = "White ⚪" if game.team_b_white else "Colored 🔵"
+        else:
+            team_a_color = team_b_color = ""
+
+        # Team A
+        teams_text += f"Team A (Captain: {game.captains[0].display_name}){' - ' + team_a_color if team_a_color else ''}:\n"
         team_a_players = [game.captains[0]] + game.teams["Team A"]
         teams_text += "\n".join(f"• {p.display_name}" for p in team_a_players)
 
-        teams_text += f"\n\nTeam B (Captain: {game.captains[1].display_name}):\n"
+        # Team B
+        teams_text += f"\n\nTeam B (Captain: {game.captains[1].display_name}){' - ' + team_b_color if team_b_color else ''}:\n"
         team_b_players = [game.captains[1]] + game.teams["Team B"]
         teams_text += "\n".join(f"• {p.display_name}" for p in team_b_players)
 
+        # Add selection prompt if in selection state
         if game.game_state == "SELECTION":
             teams_text += f"\n\n{game.current_selector.display_name}'s turn to select"
-            # Get remaining players
             remaining_players = [
                 p
                 for p in game.players
