@@ -14,3 +14,4 @@ class SoccerGame:
         self.join_message_id = None
         self.teams_message_id = None
         self.team_b_white = None
+        self.captain_selection_method = None

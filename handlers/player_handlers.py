@@ -1,3 +1,4 @@
+import os
 from models.game_player import GamePlayer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -9,6 +10,7 @@ class PlayerHandlers:
         self.game_manager = game_manager
         self.player_db_manager = player_db_manager
         self.game_db_manager = game_db_manager
+        self.admin_ids = os.getenv("ADMIN_IDS").split(",")
 
     async def handle_join(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -249,40 +251,169 @@ class PlayerHandlers:
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         game = self.game_manager.get_game(chat_id)
 
-        # TODO: remove comment
         # Filter out external players (who have negative IDs)
-        # telegram_players = [p for p in game.players if p.id > 0]
+        telegram_players = [p for p in game.players if p.id > 0]
         telegram_players = game.players
 
-        # Check if we have enough Telegram players to be captains
+        # Check if we have enough players to be captains
         if len(telegram_players) < 2:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="Not enough Telegram users to select captains. Need at least 2 non-external players.",
+                text="Not enough players to select captains. Need at least 2 non-external players.",
             )
             # Reset game state
             self.game_manager.remove_game(chat_id)
             return
 
-        game.captains = random.sample(telegram_players, 2)
-        game.game_state = "DRAFT_CHOICE"
+        game.game_state = "CAPTAIN_METHOD_CHOICE"
 
-        # Create method selection keyboard
+        # Change callback data to use 'captain_method' prefix
         keyboard = [
             [
-                InlineKeyboardButton("ABAB", callback_data="draft_abab"),
-                InlineKeyboardButton("ABBAA", callback_data="draft_abba"),
+                InlineKeyboardButton(
+                    "Random 🎲", callback_data="captain_method_random"
+                ),
+                InlineKeyboardButton(
+                    "Manual 👥", callback_data="captain_method_manual"
+                ),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"Captains selected!\n"
-            f"Team A Captain: {game.captains[0].display_name}\n"
-            f"Team B Captain: {game.captains[1].display_name}\n\n",
+            text="How do you want to select captains?",
             reply_markup=reply_markup,
         )
+
+    async def handle_captain_method(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        game = self.game_manager.get_game(chat_id)
+
+        if not game or game.game_state != "CAPTAIN_METHOD_CHOICE":
+            await query.answer("No active captain selection!")
+            return
+
+        if str(query.from_user.id) not in self.admin_ids:
+            await query.answer("That's only for admins!")
+            return
+
+        selection_method = query.data.split("_")[2]  # 'random' or 'manual'
+        game.captain_selection_method = selection_method
+
+        if selection_method == "random":
+            # Random selection logic remains the same
+            game.captains = random.sample(game.players, 2)
+            game.game_state = "DRAFT_CHOICE"
+
+            await query.message.delete()
+
+            keyboard = [
+                [
+                    InlineKeyboardButton("ABAB", callback_data="draft_abab"),
+                    InlineKeyboardButton("ABBAA", callback_data="draft_abba"),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"Captains selected randomly!\n"
+                f"Team A Captain: {game.captains[0].display_name}\n"
+                f"Team B Captain: {game.captains[1].display_name}\n\n"
+                f"Choose draft method:",
+                reply_markup=reply_markup,
+            )
+        else:
+            # Manual selection process
+            game.game_state = "CAPTAIN_SELECTION"
+            game.captains = []
+
+            await query.message.delete()
+
+            # Use 'captain_select' prefix for selection callbacks
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        p.display_name, callback_data=f"captain_select_{p.id}"
+                    )
+                ]
+                for p in game.players
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Select Team A Captain:",
+                reply_markup=reply_markup,
+            )
+
+    async def handle_captain_selection(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        game = self.game_manager.get_game(chat_id)
+
+        if not game or game.game_state != "CAPTAIN_SELECTION":
+            await query.answer("No active captain selection!")
+            return
+
+        if str(query.from_user.id) not in self.admin_ids:
+            await query.answer("That's only for admins!")
+            return
+
+        selected_id = int(query.data.split("_")[2])  # Changed index to 2
+        selected_player = next(p for p in game.players if p.id == selected_id)
+
+        if not game.captains:
+            # First captain selection (Team A)
+            game.captains.append(selected_player)
+
+            remaining_players = [p for p in game.players if p != selected_player]
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        p.display_name, callback_data=f"captain_select_{p.id}"
+                    )
+                ]
+                for p in remaining_players
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.message.edit_text(
+                f"Team A Captain: {selected_player.display_name}\n\n"
+                "Select Team B Captain:",
+                reply_markup=reply_markup,
+            )
+        else:
+            # Second captain selection (Team B)
+            game.captains.append(selected_player)
+            game.game_state = "DRAFT_CHOICE"
+
+            await query.message.delete()
+
+            keyboard = [
+                [
+                    InlineKeyboardButton("ABAB", callback_data="draft_abab"),
+                    InlineKeyboardButton("ABBAA", callback_data="draft_abba"),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"Captains selected!\n"
+                f"Team A Captain: {game.captains[0].display_name}\n"
+                f"Team B Captain: {game.captains[1].display_name}\n\n"
+                f"Choose draft method:",
+                reply_markup=reply_markup,
+            )
+
+        await query.answer()
 
     async def handle_draft_choice(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -293,6 +424,10 @@ class PlayerHandlers:
 
         if not game or game.game_state != "DRAFT_CHOICE":
             await query.answer("No active draft choice!")
+            return
+
+        if str(query.from_user.id) not in self.admin_ids:
+            await query.answer("That's only for admins!")
             return
 
         draft_method = query.data.split("_")[1]  # 'abab' or 'abba'
@@ -363,6 +498,7 @@ class PlayerHandlers:
             else:  # Fourth pick of sequence
                 game.current_selector = game.captains[0]  # Goes back to A
 
+        force_new = False
         players_per_team = (game.max_players - 2) // 2
         if (
             len(game.teams["Team A"]) == players_per_team
@@ -389,8 +525,10 @@ class PlayerHandlers:
                 reply_markup=reply_markup,
             )
 
+            force_new = True
+
         # Update the teams message
-        await self.game_manager.update_teams_message(chat_id, context)
+        await self.game_manager.update_teams_message(chat_id, context, force_new)
         await query.answer()
 
     async def handle_color_selection(
