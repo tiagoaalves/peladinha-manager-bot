@@ -56,3 +56,51 @@ class GameManager:
             reply_markup=reply_markup if len(game.players) < game.max_players else None,
         )
         game.join_message_id = message.message_id
+
+    async def update_teams_message(
+        self, chat_id: int, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        game = self.get_game(chat_id)
+        if not game:
+            return
+
+        if game.teams_message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id, message_id=game.teams_message_id
+                )
+            except:
+                pass
+
+        # Format teams message
+        teams_text = "Current Teams:\n\n"
+        teams_text += f"Team A (Captain: {game.captains[0].display_name}):\n"
+        team_a_players = [game.captains[0]] + game.teams["Team A"]
+        teams_text += "\n".join(f"• {p.display_name}" for p in team_a_players)
+
+        teams_text += f"\n\nTeam B (Captain: {game.captains[1].display_name}):\n"
+        team_b_players = [game.captains[1]] + game.teams["Team B"]
+        teams_text += "\n".join(f"• {p.display_name}" for p in team_b_players)
+
+        if game.game_state == "SELECTION":
+            teams_text += f"\n\n{game.current_selector.display_name}'s turn to select"
+            # Get remaining players
+            remaining_players = [
+                p
+                for p in game.players
+                if p not in game.captains
+                and p not in game.teams["Team A"]
+                and p not in game.teams["Team B"]
+            ]
+            keyboard = [
+                [InlineKeyboardButton(p.display_name, callback_data=f"select_{p.id}")]
+                for p in remaining_players
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+        else:
+            reply_markup = None
+
+        message = await context.bot.send_message(
+            chat_id=chat_id, text=teams_text, reply_markup=reply_markup
+        )
+        game.teams_message_id = message.message_id

@@ -249,8 +249,10 @@ class PlayerHandlers:
     async def select_captains(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         game = self.game_manager.get_game(chat_id)
 
+        # TODO: remove comment
         # Filter out external players (who have negative IDs)
-        telegram_players = [p for p in game.players if p.id > 0]
+        # telegram_players = [p for p in game.players if p.id > 0]
+        telegram_players = game.players
 
         # Check if we have enough Telegram players to be captains
         if len(telegram_players) < 2:
@@ -297,26 +299,26 @@ class PlayerHandlers:
         game.draft_method = draft_method
         game.game_state = "SELECTION"
         game.current_selector = game.captains[0]
-        game.selection_round = 0  # Track the selection round
+        game.selection_round = 0
 
-        # Get players available for selection
-        remaining_players = [p for p in game.players if p not in game.captains]
-        keyboard = [
-            [InlineKeyboardButton(p.display_name, callback_data=f"select_{p.id}")]
-            for p in remaining_players
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
+        # Announce the draft method and captains
         method_name = (
             "Alternating (ABAB)" if draft_method == "abab" else "Snake Draft (ABBA)"
         )
-        await query.message.edit_text(
-            f"Draft Method: {method_name}\n\n"
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"Draft Method: {method_name}\n\n"
             f"Team A Captain: {game.captains[0].display_name}\n"
-            f"Team B Captain: {game.captains[1].display_name}\n\n"
-            f"{game.current_selector.display_name}, select your first player:",
-            reply_markup=reply_markup,
+            f"Team B Captain: {game.captains[1].display_name}\n",
         )
+
+        # Delete the original draft choice message
+        await query.message.delete()
+
+        # Show the teams message with selection buttons
+        await self.game_manager.update_teams_message(chat_id, context)
+
+        await query.answer()
 
     async def handle_selection(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -369,52 +371,8 @@ class PlayerHandlers:
         ):
             game.game_state = "IN_GAME"
 
-            # First delete the selection message
-            await query.message.delete()
-
-            # Show final teams in a new message without any keyboard
-            team_a_players = [game.captains[0]] + game.teams["Team A"]
-            team_b_players = [game.captains[1]] + game.teams["Team B"]
-
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="Teams are complete!\n\n"
-                f"Team A (Captain: {game.captains[0].display_name}):\n"
-                f"{chr(10).join(p.display_name for p in team_a_players)}\n\n"
-                f"Team B (Captain: {game.captains[1].display_name}):\n"
-                f"{chr(10).join(p.display_name for p in team_b_players)}\n\n"
-                "Good luck! Use /end_game when finished.",
-            )
-        else:
-            remaining_players = [
-                p
-                for p in game.players
-                if p not in game.captains
-                and p not in game.teams["Team A"]
-                and p not in game.teams["Team B"]
-            ]
-
-            keyboard = [
-                [InlineKeyboardButton(p.display_name, callback_data=f"select_{p.id}")]
-                for p in remaining_players
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            # Show current teams status
-            team_a_list = [game.captains[0].display_name] + [
-                p.display_name for p in game.teams["Team A"]
-            ]
-            team_b_list = [game.captains[1].display_name] + [
-                p.display_name for p in game.teams["Team B"]
-            ]
-
-            await query.message.edit_text(
-                f"Team A:\n{chr(10).join(team_a_list)}\n\n"
-                f"Team B:\n{chr(10).join(team_b_list)}\n\n"
-                f"{game.current_selector.display_name}'s turn to select:",
-                reply_markup=reply_markup,
-            )
-
+        # Update the teams message
+        await self.game_manager.update_teams_message(chat_id, context)
         await query.answer()
 
     async def show_player_stats(

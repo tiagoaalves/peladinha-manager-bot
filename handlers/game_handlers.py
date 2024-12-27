@@ -38,7 +38,7 @@ class GameHandlers:
             return
 
         if game.game_state != "WAITING":
-            await update.message.reply_text("Game already started!")
+            await update.message.reply_text("Teams already made!")
             return
 
         await self.game_manager.update_join_message(chat_id, context)
@@ -338,6 +338,17 @@ class GameHandlers:
                 chat_id=chat_id,
                 text=f"No external player found with name: {player_name}",
             )
+
+    async def show_teams(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Command handler to show current teams"""
+        chat_id = update.effective_chat.id
+        game = self.game_manager.get_game(chat_id)
+
+        if not game or game.game_state == "WAITING":
+            await update.message.reply_text("No active game with teams!")
+            return
+
+        await self.game_manager.update_teams_message(chat_id, context)
 
 
 class ExternalPlayer:
