@@ -58,19 +58,11 @@ class GameManager:
         game.join_message_id = message.message_id
 
     async def update_teams_message(
-        self, chat_id: int, context: ContextTypes.DEFAULT_TYPE
+        self, chat_id: int, context: ContextTypes.DEFAULT_TYPE, force_new: bool = False
     ) -> None:
         game = self.get_game(chat_id)
         if not game:
             return
-
-        if game.teams_message_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=chat_id, message_id=game.teams_message_id
-                )
-            except:
-                pass
 
         # Format teams message
         teams_text = "Current Teams:\n\n"
@@ -110,7 +102,41 @@ class GameManager:
         else:
             reply_markup = None
 
-        message = await context.bot.send_message(
-            chat_id=chat_id, text=teams_text, reply_markup=reply_markup
-        )
-        game.teams_message_id = message.message_id
+        if force_new:
+            # Delete old message if it exists
+            if game.teams_message_id:
+                try:
+                    await context.bot.delete_message(
+                        chat_id=chat_id, message_id=game.teams_message_id
+                    )
+                except Exception as e:
+                    print(f"Error deleting message: {e}")
+
+            # Send new message
+            message = await context.bot.send_message(
+                chat_id=chat_id, text=teams_text, reply_markup=reply_markup
+            )
+            game.teams_message_id = message.message_id
+        else:
+            if game.teams_message_id:
+                try:
+                    # Edit existing message
+                    await context.bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=game.teams_message_id,
+                        text=teams_text,
+                        reply_markup=reply_markup,
+                    )
+                except Exception as e:
+                    print(f"Error editing message: {e}")
+                    # If editing fails, send a new one
+                    message = await context.bot.send_message(
+                        chat_id=chat_id, text=teams_text, reply_markup=reply_markup
+                    )
+                    game.teams_message_id = message.message_id
+            else:
+                # If no message exists yet, send a new one
+                message = await context.bot.send_message(
+                    chat_id=chat_id, text=teams_text, reply_markup=reply_markup
+                )
+                game.teams_message_id = message.message_id

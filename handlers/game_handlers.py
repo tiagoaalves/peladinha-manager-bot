@@ -348,7 +348,7 @@ class GameHandlers:
             await update.message.reply_text("No active game with teams!")
             return
 
-        await self.game_manager.update_teams_message(chat_id, context)
+        await self.game_manager.update_teams_message(chat_id, context, force_new=True)
 
 
 class ExternalPlayer:
