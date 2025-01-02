@@ -60,6 +60,9 @@ class GameHandlers:
             # Handle player records
             telegram_players = [p for p in game.players if p.id > 0]
 
+            team_a_external_count = len([p for p in game.teams["Team A"] if p.id < 0])
+            team_b_external_count = len([p for p in game.teams["Team B"] if p.id < 0])
+
             # Prepare player data
             players_data = []
             for player in telegram_players:
@@ -79,6 +82,8 @@ class GameHandlers:
                 score_team_a=None,
                 score_team_b=None,
                 players_data=players_data,
+                team_a_external_count=team_a_external_count,
+                team_b_external_count=team_b_external_count,
             )
 
         except Exception as e:

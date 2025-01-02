@@ -6,12 +6,22 @@ from models.game_player import GamePlayer
 
 
 class GameDBManager(BaseManager):
-    def save_game(self, chat_id, score_team_a, score_team_b, players_data):
+    def save_game(
+        self,
+        chat_id,
+        score_team_a,
+        score_team_b,
+        players_data,
+        team_a_external_count,
+        team_b_external_count,
+    ):
         """Save game results and player participations"""
         game_data = {
             "chat_id": str(chat_id),
             "score_team_a": score_team_a,
             "score_team_b": score_team_b,
+            "team_a_external_count": team_a_external_count,
+            "team_b_external_count": team_b_external_count,
             "played_at": datetime.utcnow().isoformat(),
         }
 

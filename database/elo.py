@@ -12,7 +12,7 @@ class EloConfig:
     min_k: int = 16
     max_k: int = 48
     default_rating: int = 1200
-    goal_difference_factor: float = 0.25
+    goal_difference_factor: float = 0.1
 
 
 class EloDBManager(BaseManager):
@@ -46,6 +46,7 @@ class EloDBManager(BaseManager):
         exp_score_a = self._expected_score(team_a_rating, team_b_rating)
         exp_score_b = 1 - exp_score_a
         print(f"Expected scores: {exp_score_a}, {exp_score_b}")
+        print(f"Actual scores: {team_a_score}, {team_b_score}")
 
         # Calculate actual scores and goal difference factor
         actual_score_a, actual_score_b = self._calculate_actual_scores(
@@ -85,8 +86,9 @@ class EloDBManager(BaseManager):
                 )
                 new_ratings[player["player_id"]] = round(current_rating + rating_change)
 
-        print(current_ratings)
-        print(new_ratings)
+        print(f"Current ratings: {current_ratings}")
+        print(f"New ratings: {new_ratings}")
+
         return new_ratings
 
     def _calculate_team_rating(
@@ -151,6 +153,8 @@ class EloDBManager(BaseManager):
                 self.logger.error(f"Game {game_id} not found")
                 return False
 
+            print(f"Date: {game['played_at']}")
+
             # Fetch player data
             result = (
                 self.supabase.table("game_players")
@@ -160,11 +164,37 @@ class EloDBManager(BaseManager):
             )
             players_data = result.data if result.data else []
 
+            # Create virtual players for external players
+            external_players = []
+            if game.get("team_a_external_count", 0) > 0:
+                for i in range(game["team_a_external_count"]):
+                    external_player = {
+                        "player_id": -(
+                            game_id * 100 + i + 1
+                        ),  # Ensures unique negative IDs
+                        "team": "A",
+                        "is_captain": False,
+                        "is_mvp": False,
+                    }
+                    players_data.append(external_player)
+                    external_players.append(external_player["player_id"])
+
+            if game.get("team_b_external_count", 0) > 0:
+                for i in range(game["team_b_external_count"]):
+                    external_player = {
+                        "player_id": -(game_id * 100 + len(external_players) + i + 1),
+                        "team": "B",
+                        "is_captain": False,
+                        "is_mvp": False,
+                    }
+                    players_data.append(external_player)
+                    external_players.append(external_player["player_id"])
+
             # Separate players by team
             team_a = [p for p in players_data if p["team"] == "A"]
             team_b = [p for p in players_data if p["team"] == "B"]
 
-            # Get current ratings
+            # Get current ratings for registered players
             all_player_ids = [
                 p["player_id"] for p in players_data if p["player_id"] > 0
             ]
@@ -177,6 +207,13 @@ class EloDBManager(BaseManager):
             current_ratings = (
                 {p["id"]: p["elo_rating"] for p in result.data} if result.data else {}
             )
+
+            # Add ratings for external players
+            for external_id in external_players:
+                current_ratings[external_id] = (
+                    1200  # Default rating for external players
+                )
+
             # Calculate new ratings
             new_ratings = self.calculate_game_adjustments(
                 team_a,
@@ -186,11 +223,14 @@ class EloDBManager(BaseManager):
                 current_ratings,
             )
 
-            # Update ratings in database
+            # Update ratings in database (only for registered players)
             for player_id, new_rating in new_ratings.items():
-                self.supabase.table("players").update({"elo_rating": new_rating}).eq(
-                    "id", player_id
-                ).execute()
+                if player_id > 0:  # Only update ratings for registered players
+                    self.supabase.table("players").update(
+                        {"elo_rating": new_rating}
+                    ).eq("id", player_id).execute()
+
+            print("--- Ratings updated ---\n\n")
 
             return True
 
