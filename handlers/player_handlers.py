@@ -1,4 +1,5 @@
 import os
+from database.elo import EloDBManager
 from models.game_player import GamePlayer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -10,6 +11,7 @@ class PlayerHandlers:
         self.game_manager = game_manager
         self.player_db_manager = player_db_manager
         self.game_db_manager = game_db_manager
+        self.elo_manager = EloDBManager()
         self.admin_ids = os.getenv("ADMIN_IDS").split(",")
 
     async def handle_join(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -221,6 +223,9 @@ class PlayerHandlers:
 
         # Notify voters
         await self._notify_voters_completion(game, context)
+
+        # Update player elo ratings
+        self.elo_manager.process_game_ratings(game.db_game_id)
 
         # Clean up
         self.game_db_manager.remove_active_game(chat_id)
