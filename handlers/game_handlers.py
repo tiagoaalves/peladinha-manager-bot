@@ -14,6 +14,7 @@ class GameHandlers:
         self.game_db_manager = game_db_manager
         self.elo_db_manager = elo_db_manager
 
+    @admin_only
     async def start_game(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
 
