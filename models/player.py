@@ -17,6 +17,8 @@ class Player:
             self.current_streak = 0
             self.best_streak = 0
             self.worst_streak = 0
+            self.unbeaten_streak = 0
+            self.best_unbeaten_streak = 0
             self.times_captain = 0
             self.times_mvp = 0
             self.last_played = None
@@ -25,10 +27,8 @@ class Player:
     def from_db(cls, db_record):
         """
         Create a Player instance from a database record.
-
         Args:
             db_record (dict): Player data from database
-
         Returns:
             Player: New Player instance with database values
         """
@@ -43,6 +43,8 @@ class Player:
         player.current_streak = db_record["current_streak"]
         player.best_streak = db_record["best_streak"]
         player.worst_streak = db_record["worst_streak"]
+        player.unbeaten_streak = db_record["unbeaten_streak"]
+        player.best_unbeaten_streak = db_record["best_unbeaten_streak"]
         player.times_captain = db_record["times_captain"]
         player.times_mvp = db_record["times_mvp"]
         player.last_played = db_record["last_played"]
@@ -52,7 +54,6 @@ class Player:
     def to_dict(self):
         """
         Convert player instance to dictionary for database storage.
-
         Returns:
             dict: Player data ready for database insertion/update
         """
@@ -67,6 +68,8 @@ class Player:
             "current_streak": self.current_streak,
             "best_streak": self.best_streak,
             "worst_streak": self.worst_streak,
+            "unbeaten_streak": self.unbeaten_streak,
+            "best_unbeaten_streak": self.best_unbeaten_streak,
             "times_captain": self.times_captain,
             "times_mvp": self.times_mvp,
             "last_played": self.last_played,
