@@ -167,7 +167,8 @@ class PlayerHandlers:
         if game.mvp_status_message_id:
             status_text = "🗳️ MVP Voting in Progress!\n\n" "Missing votes from:\n"
             if game.pending_voters:
-                status_text += f"• {'\n• '.join(game.pending_voters)}"
+                bullet_points = "\n• ".join(game.pending_voters)
+                status_text += f"• {bullet_points}"
             else:
                 status_text += "None - all votes received!"
 
