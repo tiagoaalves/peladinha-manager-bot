@@ -257,7 +257,7 @@ class GameHandlers:
             dummy_players.append(player)
 
         # Set the game's players to our dummy list
-        game.players = dummy_players
+        game.players.extend(dummy_players)
 
         # Update the join message
         await self.game_manager.update_join_message(chat_id, context)
