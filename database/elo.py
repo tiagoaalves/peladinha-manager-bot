@@ -237,3 +237,76 @@ class EloDBManager(BaseManager):
         except Exception as e:
             self.logger.error(f"Error processing ratings for game {game_id}: {str(e)}")
             return False
+
+    def get_pregame_analysis(
+        self,
+        team_a_players: List[Dict],
+        team_b_players: List[Dict],
+        current_ratings: Dict[int, int],
+    ) -> Dict:
+        """
+        Calculate pre-game analysis including team ratings and expected outcomes.
+
+        Args:
+            team_a_players: List of player dictionaries for team A
+            team_b_players: List of player dictionaries for team B
+            current_ratings: Dictionary of current ELO ratings for all players
+
+        Returns:
+            Dictionary containing team ratings and expected outcomes
+        """
+        # Calculate team ratings
+        team_a_rating = self._calculate_team_rating(team_a_players, current_ratings)
+        team_b_rating = self._calculate_team_rating(team_b_players, current_ratings)
+
+        # Calculate expected score
+        expected_score_a = self._expected_score(team_a_rating, team_b_rating)
+        expected_score_b = 1 - expected_score_a
+
+        # Expected goals (rough approximation based on average goals per game)
+        avg_goals_per_game = 12  # Can be adjusted based on league average
+        expected_goals_a = round(expected_score_a * avg_goals_per_game, 1)
+        expected_goals_b = round(expected_score_b * avg_goals_per_game, 1)
+
+        return {
+            "team_a_rating": round(team_a_rating),
+            "team_b_rating": round(team_b_rating),
+            "team_a_win_prob": round(expected_score_a * 100),
+            "team_b_win_prob": round(expected_score_b * 100),
+            "expected_goals_a": expected_goals_a,
+            "expected_goals_b": expected_goals_b,
+        }
+
+    def get_pregame_analysis_from_game(self, game) -> Dict:
+        """
+        Get pre-game analysis for a game, handling all data preparation internally.
+
+        Args:
+            game: Game object with teams and players
+
+        Returns:
+            Dictionary containing team ratings and expected outcomes
+        """
+        # Convert game teams to the format needed for calculations
+        team_a_players = [
+            {"player_id": p.id, "team": "A"} for p in game.teams["Team A"]
+        ]
+        team_b_players = [
+            {"player_id": p.id, "team": "B"} for p in game.teams["Team B"]
+        ]
+
+        # Get current ratings for all players
+        all_player_ids = [p.id for p in game.players if p.id > 0]
+        result = (
+            self.supabase.table("players")
+            .select("id,elo_rating")
+            .in_("id", all_player_ids)
+            .execute()
+        )
+        current_ratings = (
+            {p["id"]: p["elo_rating"] for p in result.data} if result.data else {}
+        )
+
+        return self.get_pregame_analysis(
+            team_a_players, team_b_players, current_ratings
+        )

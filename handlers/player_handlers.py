@@ -1,5 +1,6 @@
 import os
 from database.elo import EloDBManager
+from models.game import SoccerGame
 from models.game_player import GamePlayer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -312,6 +313,8 @@ class PlayerHandlers:
         if selection_method == "random":
             # Random selection logic remains the same
             game.captains = random.sample(game.players, 2)
+            game.teams["Team A"].append(game.captains[0])
+            game.teams["Team B"].append(game.captains[1])
             game.game_state = "DRAFT_CHOICE"
 
             await query.message.delete()
@@ -377,6 +380,7 @@ class PlayerHandlers:
         if not game.captains:
             # First captain selection (Team A)
             game.captains.append(selected_player)
+            game.teams["Team A"].append(selected_player)
 
             remaining_players = [p for p in game.players if p != selected_player]
             keyboard = [
@@ -397,6 +401,7 @@ class PlayerHandlers:
         else:
             # Second captain selection (Team B)
             game.captains.append(selected_player)
+            game.teams["Team B"].append(selected_player)
             game.game_state = "DRAFT_CHOICE"
 
             await query.message.delete()
@@ -483,7 +488,7 @@ class PlayerHandlers:
         game.teams[team_name].append(selected_player)
 
         # Calculate total players selected (excluding captains)
-        total_selected = len(game.teams["Team A"]) + len(game.teams["Team B"])
+        total_selected = len(game.teams["Team A"]) + len(game.teams["Team B"]) - 2
 
         # Determine next selector based on draft method
         if game.draft_method == "abab":
@@ -504,7 +509,7 @@ class PlayerHandlers:
                 game.current_selector = game.captains[0]  # Goes back to A
 
         force_new = False
-        players_per_team = (game.max_players - 2) // 2
+        players_per_team = (game.max_players) // 2
         if (
             len(game.teams["Team A"]) == players_per_team
             and len(game.teams["Team B"]) == players_per_team
@@ -561,6 +566,30 @@ class PlayerHandlers:
         # Show final teams with colors
         await self.game_manager.update_teams_message(chat_id, context)
         await query.answer("Color choice confirmed!")
+        await self.send_pre_game_elo_stats(update, context, game)
+
+    async def send_pre_game_elo_stats(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, game: SoccerGame
+    ):
+        query = update.callback_query
+        chat_id = query.message.chat_id
+
+        # Process score and get ELO analysis
+        if hasattr(game, "db_game_id"):
+            # Get pre-game analysis
+            analysis = self.elo_manager.get_pregame_analysis_from_game(game)
+            await context.bot.send_message(
+                chat_id,
+                f"📊 Pre-game ELO Analysis:\n"
+                f"Team A Rating: {analysis['team_a_rating']}\n"
+                f"Team B Rating: {analysis['team_b_rating']}\n"
+                f"Expected Win Probability:\n"
+                f"Team A: {analysis['team_a_win_prob']}%\n"
+                f"Team B: {analysis['team_b_win_prob']}%\n"
+                f"Expected Score: {analysis['expected_goals_a']} - {analysis['expected_goals_b']}",
+            )
+        else:
+            print("Warning: No db_game_id found for game")
 
     async def show_player_stats(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
