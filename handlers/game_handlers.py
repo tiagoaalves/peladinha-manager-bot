@@ -210,14 +210,12 @@ class GameHandlers:
                 continue
 
         # Update initial message with list of pending voters
+        message_text = "🗳️ MVP Voting in Progress!\n\n"
+        message_text += "Missing votes from:\n"
+        message_text += "• " + "\n• ".join(game.pending_voters)
+
         await context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=game.mvp_status_message_id,
-            text=(
-                "🗳️ MVP Voting in Progress!\n\n"
-                "Missing votes from:\n"
-                f"• {'\n• '.join(game.pending_voters)}"
-            ),
+            chat_id=chat_id, message_id=game.mvp_status_message_id, text=message_text
         )
 
         # Send separate message for failed players if any
