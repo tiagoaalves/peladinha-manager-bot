@@ -642,3 +642,29 @@ class PlayerHandlers:
             )
 
         await update.message.reply_text(message)
+
+    async def show_elo_rankings(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        """Display all players ordered by ELO rating"""
+        # Get all players from the database
+        players = self.player_db_manager.get_all_players()
+
+        if not players:
+            await update.message.reply_text("No players found in the database!")
+            return
+
+        # Sort players by ELO rating in descending order
+        players.sort(key=lambda x: x.elo_rating, reverse=True)
+
+        # Create rankings message
+        message = "📊 ELO Rankings 📊\n\n"
+
+        rank = 1
+        for player in players:
+            if player.games_played >= 5:
+                # Format each player's entry
+                message += f"{rank}. {player.display_name}: {player.elo_rating} ({player.games_played})\n"
+                rank += 1
+
+        await update.message.reply_text(message)

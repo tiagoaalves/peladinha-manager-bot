@@ -131,3 +131,12 @@ class PlayerDBManager(BaseManager):
         except Exception as e:
             print(f"Error getting player stats: {e}")
             return None
+
+    def get_all_players(self) -> list[Player]:
+        """Get all players from the database"""
+        try:
+            result = self.supabase.table("players").select("*").execute()
+            return [Player.from_db(player) for player in result.data]
+        except Exception as e:
+            print(f"Error getting all players: {e}")
+            return []

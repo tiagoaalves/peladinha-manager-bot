@@ -55,6 +55,7 @@ async def main():
     app.add_handler(CallbackQueryHandler(player_handlers.handle_join, pattern="^join"))
     app.add_handler(CommandHandler("leaderboard", player_handlers.show_leaderboard))
     app.add_handler(CommandHandler("teams", game_handlers.show_teams))
+    app.add_handler(CommandHandler("elos", player_handlers.show_elo_rankings))
 
     app.add_handler(
         CallbackQueryHandler(player_handlers.handle_leave, pattern="^leave")
