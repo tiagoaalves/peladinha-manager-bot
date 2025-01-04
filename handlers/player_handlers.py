@@ -552,8 +552,6 @@ class PlayerHandlers:
             return
 
         choice = query.data.split("_")[1]
-        print("choice")
-        print(choice)
         game.team_b_white = choice == "white"
         game.game_state = "IN_GAME"
 
