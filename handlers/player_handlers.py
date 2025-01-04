@@ -658,7 +658,7 @@ class PlayerHandlers:
         players.sort(key=lambda x: x.elo_rating, reverse=True)
 
         # Create rankings message
-        message = "📊 ELO Rankings 📊\n\n"
+        message = "🏆 ELO Rankings 🏆\n\n"
 
         rank = 1
         for player in players:
