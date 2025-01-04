@@ -167,6 +167,7 @@ class GameHandlers:
         game.game_state = "VOTING"
         game.mvp_votes = {}
         game.voting_players = []  # Track players who can vote
+        game.pending_voters = []  # Track players who haven't voted yet
 
         # Create voting keyboard
         keyboard = []
@@ -179,11 +180,13 @@ class GameHandlers:
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # Inform group that voting is starting
-        await update.message.reply_text(
-            "Starting MVP voting! Check your private messages to cast your vote.\n"
-            "If you haven't received a message, please start a private chat with me first."
+        # Send initial message that will be updated with voting status
+        status_message = await update.message.reply_text(
+            "🗳️ MVP Voting in Progress!\n\n" "Missing votes from:\n"
         )
+
+        # Store the status message ID for updates
+        game.mvp_status_message_id = status_message.message_id
 
         # Send private messages and track successful sends
         failed_players = []
@@ -201,14 +204,27 @@ class GameHandlers:
                     reply_markup=reply_markup,
                 )
                 game.voting_players.append(player)  # Add to voting players list
+                game.pending_voters.append(player.display_name)  # Add to pending voters
             except (BadRequest, TelegramError) as e:
                 failed_players.append(player.display_name)
                 continue
 
-        # If any players couldn't receive messages, inform the group
+        # Update initial message with list of pending voters
+        await context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=game.mvp_status_message_id,
+            text=(
+                "🗳️ MVP Voting in Progress!\n\n"
+                "Missing votes from:\n"
+                f"• {'\n• '.join(game.pending_voters)}"
+            ),
+        )
+
+        # Send separate message for failed players if any
         if failed_players:
             await update.message.reply_text(
-                f"⚠️ Couldn't send voting message to: {', '.join(failed_players)}\n"
+                "⚠️ Couldn't send voting message to: "
+                f"{', '.join(failed_players)}\n"
                 "These players won't participate in the MVP voting."
             )
 

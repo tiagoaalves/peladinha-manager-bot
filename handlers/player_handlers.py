@@ -156,6 +156,27 @@ class PlayerHandlers:
         voted_player = self._record_vote(game, voter.id, voted_id)
         await query.message.delete()
 
+        # Remove voter from pending voters list
+        try:
+            display_name = self.player_db_manager.get_player_display_name(voter.id)
+            game.pending_voters.remove(display_name)
+        except ValueError:
+            pass  # In case the name isn't in the list for some reason
+
+        # Update the status message with remaining voters
+        if game.mvp_status_message_id:
+            status_text = "🗳️ MVP Voting in Progress!\n\n" "Missing votes from:\n"
+            if game.pending_voters:
+                status_text += f"• {'\n• '.join(game.pending_voters)}"
+            else:
+                status_text += "None - all votes received!"
+
+            await context.bot.edit_message_text(
+                chat_id=game_chat_id,
+                message_id=game.mvp_status_message_id,
+                text=status_text,
+            )
+
         # Check if voting is complete
         if len(game.mvp_votes) == len(game.voting_players):
             await self._handle_voting_completion(game, game_chat_id, context)
